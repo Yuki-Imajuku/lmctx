@@ -1,0 +1,176 @@
+[build-system]
+requires = ["hatchling", "uv-dynamic-versioning"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/lmctx"]
+
+[tool.hatch.version]
+source = "uv-dynamic-versioning"
+
+[tool.uv-dynamic-versioning]
+fallback-version = "0.0.0+unknown"
+
+[project]
+name = "lmctx"
+dynamic = ["version"]
+description = "Context Kernel for LLM APIs."
+authors = [
+    { name = "Yuki-Imajuku", email = "yuki.imjk@gmail.com" },
+]
+requires-python = ">=3.10,<3.15"
+readme = "README.md"
+license = { file = "LICENSE" }
+keywords = ["llm", "context", "kernel", "adapter", "openai", "anthropic", "tool-calling", "multimodal"]
+classifiers = [
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Development Status :: 4 - Beta",
+    "Typing :: Typed",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Education",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Framework :: Hatch",
+]
+dependencies = []
+
+[project.urls]
+Repository = "https://github.com/Yuki-Imajuku/lmctx"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
+    "ruff>=0.15.0",
+    "ty>=0.0.16",
+]
+
+[project.optional-dependencies]
+openai = ["openai>=2.20.0"]
+anthropic = ["anthropic>=0.79.0"]
+google = ["google-genai>=1.62.0"]
+bedrock = ["boto3>=1.40.0"]
+all = ["lmctx[openai]", "lmctx[anthropic]", "lmctx[google]", "lmctx[bedrock]"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = []
+
+[tool.ruff]
+src = ["examples", "src", "tests"]
+line-length = 120
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.ruff.lint]
+select = [
+    "E",      # errors
+    "W",      # warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "N",      # pep8-naming
+    "YTT",    # flake8-2020
+    "ANN",    # flake8-annotations
+    "ASYNC",  # flake8-async
+    "S",      # flake8-bandit
+    "BLE",    # flake8-blind-except
+    "FBT",    # flake8-boolean-trap
+    "B",      # flake8-bugbear
+    "A",      # flake8-builtins
+    "COM",    # flake8-commas
+    "C4",     # flake8-comprehensions
+    "DTZ",    # flake8-datetimez
+    "T10",    # flake8-debugger
+    "EM",     # flake8-errmsg
+    "EXE",    # flake8-executable
+    "FA",     # flake8-future-annotations
+    "INT",    # flake8-gettext
+    "ISC",    # flake8-implicit-str-concat
+    "ICN",    # flake8-import-conventions
+    "LOG",    # flake8-logging
+    "G",      # flake8-logging-format
+    "INP",    # implicit-namespace-package
+    "PIE",    # flake8-pie
+    "T20",    # flake8-print
+    "PYI",    # flake8-pyi
+    "PT",     # flake8-pytest-style
+    "Q",      # flake8-quotes
+    "RSE",    # flake8-raise
+    "RET",    # flake8-return
+    "SLF",    # flake8-self
+    "SIM",    # flake8-simplify
+    "SLOT",   # flake8-slots
+    "TID",    # flake8-tidy-imports
+    "TC",     # flake8-type-checking
+    "ARG",    # flake8-unused-arguments
+    "PTH",    # flake8-use-pathlib
+    "FLY",    # flynt (f-string)
+    "C90",    # mccabe
+    "PERF",   # perflint
+    "D",      # pydocstyle
+    "PGH",    # pygrep-hooks
+    "PL",     # pylint (convention/error/refactor/warning)
+    "UP",     # pyupgrade
+    "FURB",   # refurb
+    "RUF",    # ruff-specific
+    "TRY",    # tryceratops
+]
+ignore = [
+    "COM812", # trailing comma (conflicts with ruff formatter)
+    "ISC001", # implicit string concat (conflicts with ruff formatter)
+    "D203",   # blank line before class docstring (incompatible with D211)
+    "D213",   # multi-line summary on second line (incompatible with D212)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"examples/**/*.py" = [
+    "INP001",  # not a package
+    "T20",     # print statements for demonstration
+    "D",       # docstrings not required in examples
+    "ANN",     # type annotations not required in examples
+    "S101",    # assert for demonstrations
+]
+"scripts/**/*.py" = [
+    "INP001",  # scripts directory is intentionally non-package
+]
+"src/lmctx/plan.py" = [
+    "ANN401",  # Any is needed for provider response types in Protocol
+]
+"src/lmctx/adapters/**/*.py" = [
+    "ANN401",  # Any is needed for provider response/payload types
+    "ARG002",  # spec is part of Protocol but not always used in ingest
+]
+"tests/**/*.py" = [
+    "S101",    # assert is expected in tests
+    "SLF001",  # private member access for testing internals
+    "ARG",     # unused arguments (fixtures etc.)
+    "D",       # docstrings not required in tests
+    "PLR2004", # magic values are fine in tests
+]
+
+[tool.ruff.lint.isort]
+case-sensitive = true
+combine-as-imports = true
+default-section = "third-party"
+known-first-party = ["lmctx"]
+section-order = [
+    "future",
+    "standard-library",
+    "third-party",
+    "first-party",
+    "local-folder"
+]
+split-on-trailing-comma = true
+
+
+[tool.ty.src]
+include = ["examples", "src", "tests"]
+
+[tool.ty.rules]
+all = "error"
