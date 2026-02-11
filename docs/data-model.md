@@ -1,0 +1,226 @@
+# Data Model
+
+This document describes the canonical types used by `lmctx`.
+
+## Object Graph
+
+```text
+Context
+  messages: tuple[Message, ...]
+    Message
+      role: Role
+      parts: tuple[Part, ...]
+      id/provider/turn_id/timestamp
+  cursor: Cursor
+  usage_log: tuple[Usage, ...]
+  blob_store: BlobStore
+```
+
+## `Role`
+
+```python
+Role = Literal["system", "developer", "user", "assistant", "tool"]
+```
+
+Roles are normalized across providers even when provider-native role names differ.
+
+## `Part`
+
+`Part` is the basic content unit.
+
+```python
+@dataclass(frozen=True, slots=True)
+class Part:
+    type: str
+    text: str | None = None
+    json: Mapping[str, object] | None = None
+    blob: BlobReference | None = None
+    tool_call_id: str | None = None
+    tool_name: str | None = None
+    tool_args: Mapping[str, object] | None = None
+    tool_output: object | None = None
+    provider_raw: Mapping[str, object] | None = None
+```
+
+Typical `type` values include:
+- `text`, `json`
+- `image`, `audio`, `file`
+- `tool_call`, `tool_result`
+- `thinking`, `compaction`
+
+`provider_raw` is optional raw payload storage used for round-trip fidelity/debugging.
+
+## `Message`
+
+```python
+@dataclass(frozen=True, slots=True)
+class Message:
+    role: Role
+    parts: tuple[Part, ...]
+    id: str | None = None
+    provider: str | None = None
+    turn_id: str | None = None
+    timestamp: datetime = datetime.now(timezone.utc)
+```
+
+A single assistant message may contain multiple parts (for example text + tool calls + thinking).
+
+## `ToolSpecification`
+
+```python
+@dataclass(frozen=True, slots=True)
+class ToolSpecification:
+    name: str
+    description: str
+    input_schema: Mapping[str, object]
+```
+
+`input_schema` is JSON-schema-like and normalized to an immutable mapping.
+
+## `BlobReference` and `BlobStore`
+
+```python
+@dataclass(frozen=True, slots=True)
+class BlobReference:
+    id: str
+    sha256: str
+    media_type: str | None
+    kind: str
+    size: int
+```
+
+```python
+class BlobStore(Protocol):
+    def put(self, data: bytes, *, media_type: str | None = None, kind: str = "file") -> BlobReference: ...
+    def get(self, ref: BlobReference) -> bytes: ...
+    def contains(self, ref: BlobReference) -> bool: ...
+```
+
+Built-ins:
+- `InMemoryBlobStore`
+- `FileBlobStore`
+
+Both verify SHA-256 integrity in `get()`.
+
+`put_file(store, path, kind=None)` reads a local file, infers media type/kind, and stores it.
+
+## `Cursor`
+
+```python
+@dataclass(frozen=True, slots=True)
+class Cursor:
+    last_response_id: str | None = None
+    conversation_id: str | None = None
+    session_id: str | None = None
+```
+
+Cursor stores provider conversation state when applicable.
+
+## `Usage`
+
+```python
+@dataclass(frozen=True, slots=True)
+class Usage:
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    total_tokens: int | None = None
+    provider_usage: Mapping[str, object] = MappingProxyType({})
+```
+
+`provider_usage` keeps raw provider-specific usage payloads in immutable form.
+
+## `Context`
+
+```python
+@dataclass(frozen=True, slots=True)
+class Context:
+    messages: tuple[Message, ...] = ()
+    cursor: Cursor = Cursor()
+    usage_log: tuple[Usage, ...] = ()
+    blob_store: BlobStore = InMemoryBlobStore()
+```
+
+Mutation methods:
+- `append`, `extend`
+- `user`, `assistant`
+- `with_cursor`, `with_usage`
+- `clear`
+
+By default these return a new `Context`; with `inplace=True` they mutate and return `None`.
+
+Query/helpers:
+- `last(role=None)`
+- `clone()`
+- `pipe(func, *args, **kwargs)`
+- iterable / `len()` support
+
+## `Instructions` and `RunSpec`
+
+```python
+@dataclass(frozen=True, slots=True)
+class Instructions:
+    system: str | None = None
+    developer: str | None = None
+```
+
+```python
+@dataclass(frozen=True, slots=True)
+class RunSpec:
+    provider: str
+    endpoint: str
+    model: str
+    api_version: str | None = None
+    instructions: Instructions | None = None
+    max_output_tokens: int | None = None
+    temperature: float | None = None
+    top_p: float | None = None
+    seed: int | None = None
+    tools: tuple[ToolSpecification, ...] = ()
+    tool_choice: object | None = None
+    response_schema: Mapping[str, object] | None = None
+    response_modalities: tuple[str, ...] = ()
+    extra_body: Mapping[str, object] = MappingProxyType({})
+    extra_headers: Mapping[str, str] = MappingProxyType({})
+    extra_query: Mapping[str, str] = MappingProxyType({})
+    base_url: str | None = None
+```
+
+`RunSpec` describes call configuration, not conversation content.
+
+## `RequestPlan`, `ExcludedItem`, `AdapterId`
+
+```python
+@dataclass(frozen=True, slots=True)
+class AdapterId:
+    provider: str
+    endpoint: str
+    api_version: str | None = None
+```
+
+```python
+@dataclass(frozen=True, slots=True)
+class ExcludedItem:
+    description: str
+    reason: str
+```
+
+```python
+@dataclass(frozen=True, slots=True)
+class RequestPlan:
+    request: dict[str, Any]
+    included: tuple[str, ...] = ()
+    excluded: tuple[ExcludedItem, ...] = ()
+    must_roundtrip: tuple[str, ...] = ()
+    warnings: tuple[str, ...] = ()
+    errors: tuple[str, ...] = ()
+    token_estimate: int | None = None
+    extra: dict[str, Any] = field(default_factory=dict)
+```
+
+`request` and `extra` are normalized to plain Python containers in `__post_init__`.
+
+## Immutability Rules
+
+Core dataclasses are frozen.
+Mutable mappings/sequences passed into types are normalized to immutable structures where relevant.
+This prevents accidental mutation of snapshots after construction.
