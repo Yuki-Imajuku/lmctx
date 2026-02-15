@@ -225,7 +225,7 @@ def _message_from_dict(value: object, *, field_name: str) -> Message:
     role = role_value
 
     parts_value = data.get("parts")
-    if not isinstance(parts_value, list | tuple):
+    if not isinstance(parts_value, (list, tuple)):
         msg = f"{field_name}.parts must be a sequence."
         raise TypeError(msg)
     parts = tuple(
@@ -348,7 +348,7 @@ def _serialize_blob_payloads(ctx: Context) -> list[dict[str, object]]:
 
 def _deserialize_blob_store(value: object) -> BlobStore:
     """Deserialize a blob payload list into a hydrated BlobStore."""
-    if not isinstance(value, list | tuple):
+    if not isinstance(value, (list, tuple)):
         msg = "Context.blob_payloads must be a sequence."
         raise TypeError(msg)
 
@@ -569,7 +569,7 @@ class Context:
         - neither provided: use a new empty InMemoryBlobStore.
         """
         messages_value = value.get("messages", ())
-        if not isinstance(messages_value, list | tuple):
+        if not isinstance(messages_value, (list, tuple)):
             msg = "Context.messages must be a sequence."
             raise TypeError(msg)
         messages = tuple(
@@ -580,7 +580,7 @@ class Context:
         cursor = _cursor_from_dict(value.get("cursor"))
 
         usage_log_value = value.get("usage_log", ())
-        if not isinstance(usage_log_value, list | tuple):
+        if not isinstance(usage_log_value, (list, tuple)):
             msg = "Context.usage_log must be a sequence."
             raise TypeError(msg)
         usage_log = tuple(
