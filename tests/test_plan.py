@@ -1,5 +1,8 @@
 from types import MappingProxyType
 
+import pytest
+
+from lmctx.errors import PlanValidationError
 from lmctx.plan import AdapterId, ExcludedItem, LmctxAdapter, RequestPlan
 
 
@@ -62,3 +65,81 @@ def test_lmctx_adapter_is_runtime_checkable() -> None:
     # Protocol itself should be checkable
     assert hasattr(LmctxAdapter, "plan")
     assert hasattr(LmctxAdapter, "ingest")
+
+
+def test_request_plan_unused_parameter_warnings() -> None:
+    plan = RequestPlan(
+        request={"model": "gpt-4o"},
+        excluded=(
+            ExcludedItem(description="seed", reason="provider does not support deterministic seed"),
+            ExcludedItem(description="extra_headers", reason="adapter does not map transport overrides"),
+        ),
+    )
+
+    assert plan.unused_parameter_warnings() == (
+        "unused parameter 'seed': provider does not support deterministic seed",
+        "unused parameter 'extra_headers': adapter does not map transport overrides",
+    )
+
+
+def test_request_plan_warning_messages_include_unused_parameters_by_default() -> None:
+    plan = RequestPlan(
+        request={"model": "gpt-4o"},
+        warnings=("max_output_tokens not set",),
+        excluded=(ExcludedItem(description="seed", reason="provider does not support deterministic seed"),),
+    )
+
+    assert plan.warning_messages() == (
+        "max_output_tokens not set",
+        "unused parameter 'seed': provider does not support deterministic seed",
+    )
+
+
+def test_request_plan_warning_messages_can_exclude_unused_parameters() -> None:
+    plan = RequestPlan(
+        request={"model": "gpt-4o"},
+        warnings=("max_output_tokens not set",),
+        excluded=(ExcludedItem(description="seed", reason="provider does not support deterministic seed"),),
+    )
+
+    assert plan.warning_messages(include_unused_parameters=False) == ("max_output_tokens not set",)
+
+
+def test_request_plan_assert_valid_raises_on_errors_by_default() -> None:
+    plan = RequestPlan(
+        request={"model": "gpt-4o"},
+        errors=("request has no input items",),
+    )
+
+    with pytest.raises(PlanValidationError, match="request has no input items"):
+        plan.assert_valid()
+
+
+def test_request_plan_assert_valid_can_fail_on_warnings() -> None:
+    plan = RequestPlan(
+        request={"model": "gpt-4o"},
+        warnings=("max_output_tokens not set",),
+    )
+
+    with pytest.raises(PlanValidationError, match="warning: max_output_tokens not set"):
+        plan.assert_valid(fail_on_warnings=True)
+
+
+def test_request_plan_assert_valid_can_fail_on_excluded_items() -> None:
+    plan = RequestPlan(
+        request={"model": "gpt-4o"},
+        excluded=(ExcludedItem(description="seed", reason="provider does not support deterministic seed"),),
+    )
+
+    with pytest.raises(PlanValidationError, match="unused parameter 'seed'"):
+        plan.assert_valid(fail_on_excluded=True)
+
+
+def test_request_plan_assert_valid_passes_when_strict_modes_disabled() -> None:
+    plan = RequestPlan(
+        request={"model": "gpt-4o"},
+        warnings=("max_output_tokens not set",),
+        excluded=(ExcludedItem(description="seed", reason="provider does not support deterministic seed"),),
+    )
+
+    plan.assert_valid()

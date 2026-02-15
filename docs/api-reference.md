@@ -19,7 +19,7 @@ from lmctx.adapters import OpenAIResponsesAdapter
 - `Part`, `Message`, `Role`, `Cursor`, `Usage`, `ToolSpecification`
 - `Instructions`, `RunSpec`
 - `BlobReference`, `BlobStore`, `InMemoryBlobStore`, `FileBlobStore`, `put_file`
-- `LmctxError`, `ContextError`, `BlobNotFoundError`, `BlobIntegrityError`
+- `LmctxError`, `PlanValidationError`, `ContextError`, `BlobNotFoundError`, `BlobIntegrityError`
 
 ### Adapter exports (`from lmctx.adapters import ...`)
 
@@ -183,6 +183,12 @@ class RequestPlan:
 
 `request` is the payload you pass to SDK calls. `extra` carries non-request hints such as `base_url`.
 
+Validation helpers:
+
+- `unused_parameter_warnings() -> tuple[str, ...]`
+- `warning_messages(include_unused_parameters=True) -> tuple[str, ...]`
+- `assert_valid(*, fail_on_warnings=False, fail_on_excluded=False) -> None`
+
 ### Adapter protocol
 
 ```python
@@ -207,6 +213,7 @@ class LmctxAdapter(Protocol):
 All custom errors inherit from `LmctxError`.
 
 - `ContextError`
+- `PlanValidationError`
 - `BlobNotFoundError`
 - `BlobIntegrityError`
 

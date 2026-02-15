@@ -133,7 +133,6 @@ ignore = [
     "INP001",  # not a package
     "T20",     # print statements for demonstration
     "D",       # docstrings not required in examples
-    "ANN",     # type annotations not required in examples
     "S101",    # assert for demonstrations
 ]
 "scripts/**/*.py" = [

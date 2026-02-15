@@ -10,6 +10,7 @@ from lmctx.errors import (
     BlobNotFoundError,
     ContextError,
     LmctxError,
+    PlanValidationError,
 )
 from lmctx.plan import AdapterId, ExcludedItem, LmctxAdapter, RequestPlan
 from lmctx.spec import Instructions, RunSpec
@@ -44,6 +45,7 @@ __all__ = [
     "LmctxError",
     "Message",
     "Part",
+    "PlanValidationError",
     "RequestPlan",
     "Role",
     "RunSpec",
