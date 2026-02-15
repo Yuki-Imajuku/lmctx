@@ -2,7 +2,7 @@ import pytest
 
 from lmctx import Context, RunSpec
 from lmctx.adapters import AutoAdapter, OpenAIChatCompletionsAdapter, OpenAIResponsesAdapter
-from lmctx.plan import AdapterId, RequestPlan
+from lmctx.plan import AdapterCapabilities, AdapterId, RequestPlan
 
 
 def _spec(**kwargs: object) -> RunSpec:
@@ -13,6 +13,10 @@ def _spec(**kwargs: object) -> RunSpec:
     }
     defaults.update(kwargs)
     return RunSpec(**defaults)  # type: ignore[arg-type]
+
+
+def _capabilities(adapter_id: AdapterId) -> AdapterCapabilities:
+    return AdapterCapabilities(id=adapter_id, fields={"tools": "yes"})
 
 
 def test_resolve_built_in_adapter() -> None:
@@ -70,6 +74,9 @@ def test_register_custom_versioned_adapter() -> None:
     class _CustomAdapter:
         id = AdapterId(provider="acme", endpoint="chat.generate", api_version="2026-02-01")
 
+        def capabilities(self) -> AdapterCapabilities:
+            return _capabilities(self.id)
+
         def plan(self, ctx: Context, spec: RunSpec) -> RequestPlan:
             return RequestPlan(request={"model": spec.model, "messages": len(ctx)})
 
@@ -88,6 +95,9 @@ def test_register_custom_versioned_adapter() -> None:
 def test_resolve_falls_back_to_unversioned_adapter() -> None:
     class _CustomAdapter:
         id = AdapterId(provider="acme", endpoint="chat.generate")
+
+        def capabilities(self) -> AdapterCapabilities:
+            return _capabilities(self.id)
 
         def plan(self, ctx: Context, spec: RunSpec) -> RequestPlan:
             return RequestPlan(request={"model": spec.model, "messages": len(ctx)})
@@ -120,6 +130,9 @@ def test_available_ids_supports_mixed_versioned_and_unversioned_ids() -> None:
     class _UnversionedAdapter:
         id = AdapterId(provider="acme", endpoint="chat.generate")
 
+        def capabilities(self) -> AdapterCapabilities:
+            return _capabilities(self.id)
+
         def plan(self, ctx: Context, spec: RunSpec) -> RequestPlan:
             return RequestPlan(request={"model": spec.model, "messages": len(ctx)})
 
@@ -128,6 +141,9 @@ def test_available_ids_supports_mixed_versioned_and_unversioned_ids() -> None:
 
     class _VersionedAdapter:
         id = AdapterId(provider="acme", endpoint="chat.generate", api_version="2026-02-01")
+
+        def capabilities(self) -> AdapterCapabilities:
+            return _capabilities(self.id)
 
         def plan(self, ctx: Context, spec: RunSpec) -> RequestPlan:
             return RequestPlan(request={"model": spec.model, "messages": len(ctx)})
@@ -146,6 +162,27 @@ def test_available_ids_supports_mixed_versioned_and_unversioned_ids() -> None:
     )
 
 
+def test_capabilities_delegates_to_resolved_adapter() -> None:
+    auto = AutoAdapter()
+    capabilities = auto.capabilities(_spec(endpoint="chat.completions"))
+
+    assert capabilities.id == AdapterId(provider="openai", endpoint="chat.completions")
+    assert capabilities.level("tools") == "yes"
+    assert capabilities.level("cursor_chaining") == "no"
+
+
+def test_available_capabilities_returns_registered_capabilities_sorted() -> None:
+    auto = AutoAdapter(adapters=[])
+    auto.register(OpenAIChatCompletionsAdapter())
+    auto.register(OpenAIResponsesAdapter())
+
+    available = auto.available_capabilities()
+    assert tuple(cap.id for cap in available) == (
+        AdapterId(provider="openai", endpoint="chat.completions"),
+        AdapterId(provider="openai", endpoint="responses.create"),
+    )
+
+
 def test_resolve_raises_on_unknown_target() -> None:
     auto = AutoAdapter(adapters=[])
     spec = RunSpec(provider="unknown", endpoint="missing", model="x")
@@ -157,6 +194,9 @@ def test_resolve_unknown_target_reports_available_ids_with_mixed_versions() -> N
     class _UnversionedAdapter:
         id = AdapterId(provider="acme", endpoint="chat.generate")
 
+        def capabilities(self) -> AdapterCapabilities:
+            return _capabilities(self.id)
+
         def plan(self, ctx: Context, spec: RunSpec) -> RequestPlan:
             return RequestPlan(request={"model": spec.model, "messages": len(ctx)})
 
@@ -165,6 +205,9 @@ def test_resolve_unknown_target_reports_available_ids_with_mixed_versions() -> N
 
     class _VersionedAdapter:
         id = AdapterId(provider="acme", endpoint="chat.generate", api_version="2026-02-01")
+
+        def capabilities(self) -> AdapterCapabilities:
+            return _capabilities(self.id)
 
         def plan(self, ctx: Context, spec: RunSpec) -> RequestPlan:
             return RequestPlan(request={"model": spec.model, "messages": len(ctx)})

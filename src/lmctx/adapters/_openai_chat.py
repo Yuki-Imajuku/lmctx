@@ -19,7 +19,7 @@ from lmctx.adapters._util import (
     _to_json_compatible,
     _validate_adapter_spec,
 )
-from lmctx.plan import AdapterId, ExcludedItem, RequestPlan
+from lmctx.plan import AdapterCapabilities, AdapterId, ExcludedItem, RequestPlan
 from lmctx.types import Message, Part, Usage
 
 if TYPE_CHECKING:
@@ -410,10 +410,35 @@ def _apply_transport_overrides(request: dict[str, object], spec: RunSpec, includ
         included.append("extra_query")
 
 
+_CAPABILITIES = AdapterCapabilities(
+    id=AdapterId(provider="openai", endpoint="chat.completions"),
+    fields={
+        "instructions": "yes",
+        "max_output_tokens": "yes",
+        "temperature": "yes",
+        "top_p": "yes",
+        "seed": "yes",
+        "tools": "yes",
+        "tool_choice": "yes",
+        "response_schema": "yes",
+        "response_modalities": "yes",
+        "extra_body": "yes",
+        "extra_headers": "yes",
+        "extra_query": "yes",
+        "cursor_chaining": "no",
+    },
+    notes={"cursor_chaining": "chat.completions does not use lmctx cursor chaining."},
+)
+
+
 class OpenAIChatCompletionsAdapter:
     """Adapter for OpenAI Chat Completions API (and compatible endpoints)."""
 
     id = AdapterId(provider="openai", endpoint="chat.completions")
+
+    def capabilities(self) -> AdapterCapabilities:
+        """Return capability metadata for this adapter."""
+        return _CAPABILITIES
 
     def plan(self, ctx: Context, spec: RunSpec) -> RequestPlan:  # noqa: C901, PLR0912
         """Build an OpenAI Chat Completions request from Context and RunSpec."""

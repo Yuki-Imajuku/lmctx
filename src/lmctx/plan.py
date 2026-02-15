@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Protocol, TypeVar, runtime_checkable
+from types import MappingProxyType
+from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeVar, runtime_checkable
 
 from lmctx.errors import PlanValidationError
 
@@ -14,6 +15,7 @@ if TYPE_CHECKING:
 
 
 ResponseT_contra = TypeVar("ResponseT_contra", contravariant=True)
+CapabilityLevel = Literal["yes", "partial", "no"]
 
 
 def _to_plain_data(value: Any) -> Any:
@@ -35,6 +37,37 @@ def _to_plain_dict(value: Mapping[str, Any] | dict[str, Any]) -> dict[str, Any]:
     return {str(key): _to_plain_data(item) for key, item in value.items()}
 
 
+def _parse_capability_level(field_name: str, level: object) -> CapabilityLevel:
+    """Validate and return a capability level literal."""
+    if level == "yes":
+        return "yes"
+    if level == "partial":
+        return "partial"
+    if level == "no":
+        return "no"
+    msg = f"Invalid capability level for {field_name!r}: {level!r}. Expected one of yes/partial/no."
+    raise ValueError(msg)
+
+
+def _freeze_capability_fields(fields: Mapping[str, object]) -> Mapping[str, CapabilityLevel]:
+    """Normalize capability levels into an immutable mapping."""
+    normalized: dict[str, CapabilityLevel] = {}
+    for field_name, level in fields.items():
+        normalized[str(field_name)] = _parse_capability_level(field_name, level)
+    return MappingProxyType(normalized)
+
+
+def _freeze_notes(notes: Mapping[str, object]) -> Mapping[str, str]:
+    """Normalize capability notes into an immutable mapping."""
+    normalized: dict[str, str] = {}
+    for field_name, note in notes.items():
+        if not isinstance(note, str):
+            msg = f"Capability note for {field_name!r} must be a string."
+            raise TypeError(msg)
+        normalized[str(field_name)] = note
+    return MappingProxyType(normalized)
+
+
 def _excluded_to_warning(item: ExcludedItem) -> str:
     """Format one excluded item as an unused-parameter warning."""
     return f"unused parameter '{item.description}': {item.reason}"
@@ -47,6 +80,41 @@ class AdapterId:
     provider: str
     endpoint: str
     api_version: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class AdapterCapabilities:
+    """Runtime capability metadata for one adapter."""
+
+    id: AdapterId
+    fields: Mapping[str, CapabilityLevel]
+    notes: Mapping[str, str] = field(default_factory=lambda: MappingProxyType({}))
+
+    def __post_init__(self) -> None:
+        """Freeze and validate capability payloads."""
+        frozen_fields = _freeze_capability_fields(self.fields)
+        frozen_notes = _freeze_notes(self.notes)
+        unknown_note_fields = tuple(field_name for field_name in frozen_notes if field_name not in frozen_fields)
+        if unknown_note_fields:
+            joined = ", ".join(repr(name) for name in unknown_note_fields)
+            msg = f"Capability notes contain unknown field keys: {joined}"
+            raise ValueError(msg)
+
+        object.__setattr__(self, "fields", frozen_fields)
+        object.__setattr__(self, "notes", frozen_notes)
+
+    def level(self, field_name: str) -> CapabilityLevel | None:
+        """Return support level for a capability field."""
+        return self.fields.get(field_name)
+
+    def is_supported(self, field_name: str, *, allow_partial: bool = True) -> bool:
+        """Return whether a field is supported by this adapter."""
+        level = self.level(field_name)
+        if level is None:
+            return False
+        if level == "yes":
+            return True
+        return allow_partial and level == "partial"
 
 
 @dataclass(frozen=True, slots=True)
@@ -128,6 +196,10 @@ class LmctxAdapter(Protocol[ResponseT_contra]):
     """
 
     id: AdapterId
+
+    def capabilities(self) -> AdapterCapabilities:
+        """Return structured adapter capability metadata."""
+        ...
 
     def plan(self, ctx: Context, spec: RunSpec) -> RequestPlan:
         """Build a provider-specific request from Context and RunSpec."""

@@ -25,7 +25,7 @@ from lmctx.adapters._util import (
     _to_json_compatible,
     _validate_adapter_spec,
 )
-from lmctx.plan import AdapterId, ExcludedItem, RequestPlan
+from lmctx.plan import AdapterCapabilities, AdapterId, ExcludedItem, RequestPlan
 from lmctx.types import Message, Part, Usage
 
 if TYPE_CHECKING:
@@ -308,6 +308,34 @@ def _apply_structured_output(request: dict[str, object], spec: RunSpec, included
     included.append("response_schema")
 
 
+_CAPABILITIES = AdapterCapabilities(
+    id=AdapterId(provider="bedrock", endpoint="converse"),
+    fields={
+        "instructions": "yes",
+        "max_output_tokens": "yes",
+        "temperature": "yes",
+        "top_p": "yes",
+        "seed": "no",
+        "tools": "yes",
+        "tool_choice": "no",
+        "response_schema": "yes",
+        "response_modalities": "no",
+        "extra_body": "yes",
+        "extra_headers": "no",
+        "extra_query": "no",
+        "cursor_chaining": "no",
+    },
+    notes={
+        "seed": "Deterministic seed support is model-specific and not mapped.",
+        "tool_choice": "Converse tool-choice controls are not mapped in this adapter.",
+        "response_modalities": "Output modality controls are model-specific and not mapped.",
+        "extra_headers": "Per-request transport headers are not mapped in this adapter.",
+        "extra_query": "Per-request query overrides are not mapped in this adapter.",
+        "cursor_chaining": "converse is stateless in this adapter.",
+    },
+)
+
+
 class BedrockConverseAdapter:
     """Adapter for the AWS Bedrock Converse API.
 
@@ -321,6 +349,10 @@ class BedrockConverseAdapter:
     """
 
     id = AdapterId(provider="bedrock", endpoint="converse")
+
+    def capabilities(self) -> AdapterCapabilities:
+        """Return capability metadata for this adapter."""
+        return _CAPABILITIES
 
     def plan(self, ctx: Context, spec: RunSpec) -> RequestPlan:  # noqa: C901
         """Build an AWS Bedrock Converse request from Context and RunSpec."""

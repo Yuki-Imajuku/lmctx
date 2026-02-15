@@ -27,7 +27,7 @@ from lmctx.adapters._util import (
     _to_json_compatible,
     _validate_adapter_spec,
 )
-from lmctx.plan import AdapterId, ExcludedItem, RequestPlan
+from lmctx.plan import AdapterCapabilities, AdapterId, ExcludedItem, RequestPlan
 from lmctx.types import Message, Part, Usage
 
 if TYPE_CHECKING:
@@ -597,6 +597,31 @@ def _build_config(spec: RunSpec, system: str | None) -> dict[str, object]:
     return config
 
 
+_CAPABILITIES = AdapterCapabilities(
+    id=AdapterId(provider="google", endpoint="models.generate_content"),
+    fields={
+        "instructions": "yes",
+        "max_output_tokens": "yes",
+        "temperature": "yes",
+        "top_p": "yes",
+        "seed": "yes",
+        "tools": "yes",
+        "tool_choice": "yes",
+        "response_schema": "yes",
+        "response_modalities": "yes",
+        "extra_body": "yes",
+        "extra_headers": "no",
+        "extra_query": "no",
+        "cursor_chaining": "no",
+    },
+    notes={
+        "extra_headers": "Per-request transport headers are not mapped in this adapter.",
+        "extra_query": "Per-request query overrides are not mapped in this adapter.",
+        "cursor_chaining": "generate_content is stateless in this adapter.",
+    },
+)
+
+
 class GoogleGenAIAdapter:
     """Adapter for the Google GenAI (Gemini) API.
 
@@ -610,6 +635,10 @@ class GoogleGenAIAdapter:
     """
 
     id = AdapterId(provider="google", endpoint="models.generate_content")
+
+    def capabilities(self) -> AdapterCapabilities:
+        """Return capability metadata for this adapter."""
+        return _CAPABILITIES
 
     def plan(self, ctx: Context, spec: RunSpec) -> RequestPlan:  # noqa: C901
         """Build a Google GenAI request from Context and RunSpec."""
