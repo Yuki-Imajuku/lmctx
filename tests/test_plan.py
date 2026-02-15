@@ -32,6 +32,7 @@ def test_adapter_capabilities_valid_payload() -> None:
     assert capabilities.is_supported("seed")
     assert not capabilities.is_supported("seed", allow_partial=False)
     assert not capabilities.is_supported("cursor_chaining")
+    assert not capabilities.is_supported("unknown_field")
 
 
 def test_adapter_capabilities_rejects_invalid_level() -> None:
@@ -48,6 +49,15 @@ def test_adapter_capabilities_rejects_unknown_note_keys() -> None:
             id=AdapterId(provider="openai", endpoint="chat.completions"),
             fields={"tools": "yes"},
             notes={"seed": "not part of fields map"},
+        )
+
+
+def test_adapter_capabilities_rejects_non_string_note_value() -> None:
+    with pytest.raises(TypeError, match="Capability note for 'tools' must be a string"):
+        AdapterCapabilities(
+            id=AdapterId(provider="openai", endpoint="chat.completions"),
+            fields={"tools": "yes"},
+            notes={"tools": 1},  # type: ignore[arg-type]
         )
 
 
@@ -177,3 +187,113 @@ def test_request_plan_assert_valid_passes_when_strict_modes_disabled() -> None:
     )
 
     plan.assert_valid()
+
+
+def test_adapter_id_to_from_dict_round_trip() -> None:
+    adapter_id = AdapterId(provider="openai", endpoint="responses.create", api_version="2025-01-01")
+    serialized = adapter_id.to_dict()
+    restored = AdapterId.from_dict(serialized)
+    assert restored == adapter_id
+
+
+def test_excluded_item_to_from_dict_round_trip() -> None:
+    item = ExcludedItem(description="seed", reason="not supported")
+    serialized = item.to_dict()
+    restored = ExcludedItem.from_dict(serialized)
+    assert restored == item
+
+
+def test_request_plan_to_from_dict_round_trip() -> None:
+    plan = RequestPlan(
+        request={"model": "gpt-4o", "metadata": {"a": ("x", "y")}},
+        included=("messages", "tools"),
+        excluded=(ExcludedItem(description="seed", reason="not supported"),),
+        must_roundtrip=("usage",),
+        warnings=("no max_output_tokens",),
+        errors=(),
+        token_estimate=1234,
+        extra={"base_url": "https://api.example.com"},
+    )
+    serialized = plan.to_dict()
+    assert serialized["included"] == ["messages", "tools"]
+    assert serialized["must_roundtrip"] == ["usage"]
+    assert serialized["warnings"] == ["no max_output_tokens"]
+
+    restored = RequestPlan.from_dict(serialized)
+    assert restored == plan
+
+
+def test_request_plan_from_dict_rejects_invalid_excluded() -> None:
+    with pytest.raises(TypeError, match=r"RequestPlan\.excluded must be a sequence"):
+        RequestPlan.from_dict(
+            {
+                "request": {"model": "gpt-4o"},
+                "excluded": {"description": "seed", "reason": "not supported"},
+            }
+        )
+
+
+@pytest.mark.parametrize(
+    ("payload", "error_pattern"),
+    [
+        ({"endpoint": "responses.create"}, r"AdapterId\.provider must be a non-empty string"),
+        ({"provider": "openai"}, r"AdapterId\.endpoint must be a non-empty string"),
+        (
+            {"provider": "openai", "endpoint": "responses.create", "api_version": 1},
+            r"AdapterId\.api_version must be a string or None",
+        ),
+    ],
+)
+def test_adapter_id_from_dict_rejects_invalid_fields(payload: dict[str, object], error_pattern: str) -> None:
+    with pytest.raises(TypeError, match=error_pattern):
+        AdapterId.from_dict(payload)
+
+
+@pytest.mark.parametrize(
+    ("payload", "error_pattern"),
+    [
+        ({"reason": "x"}, r"ExcludedItem\.description must be a non-empty string"),
+        ({"description": "seed", "reason": 1}, r"ExcludedItem\.reason must be a string"),
+    ],
+)
+def test_excluded_item_from_dict_rejects_invalid_fields(payload: dict[str, object], error_pattern: str) -> None:
+    with pytest.raises(TypeError, match=error_pattern):
+        ExcludedItem.from_dict(payload)
+
+
+@pytest.mark.parametrize(
+    ("payload", "error_pattern"),
+    [
+        (
+            {"request": "bad"},
+            r"RequestPlan\.request must be a mapping",
+        ),
+        (
+            {"request": {"model": "gpt-4o"}, "included": "bad"},
+            r"RequestPlan\.included must be a sequence of strings",
+        ),
+        (
+            {"request": {"model": "gpt-4o"}, "included": [1]},
+            r"RequestPlan\.included\[0\] must be a string",
+        ),
+        (
+            {"request": {"model": "gpt-4o"}, "must_roundtrip": [1]},
+            r"RequestPlan\.must_roundtrip\[0\] must be a string",
+        ),
+        (
+            {"request": {"model": "gpt-4o"}, "warnings": [1]},
+            r"RequestPlan\.warnings\[0\] must be a string",
+        ),
+        (
+            {"request": {"model": "gpt-4o"}, "errors": [1]},
+            r"RequestPlan\.errors\[0\] must be a string",
+        ),
+        (
+            {"request": {"model": "gpt-4o"}, "token_estimate": "1"},
+            r"RequestPlan\.token_estimate must be an int or None",
+        ),
+    ],
+)
+def test_request_plan_from_dict_rejects_invalid_fields(payload: dict[str, object], error_pattern: str) -> None:
+    with pytest.raises(TypeError, match=error_pattern):
+        RequestPlan.from_dict(payload)

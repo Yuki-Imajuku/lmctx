@@ -154,6 +154,13 @@ Query/helpers:
 - `pipe(func, *args, **kwargs)`
 - iterable / `len()` support
 
+Serialization note:
+- `Context.to_dict()` stores blob references by default, not blob bytes.
+- To persist blobs across process boundaries, either:
+  - call `to_dict(include_blob_payloads=True)`, or
+  - restore with a persistent external `blob_store` via `Context.from_dict(..., blob_store=...)`.
+- Embedding blob payloads is larger because bytes are base64-encoded into the serialized object.
+
 ## `Instructions` and `RunSpec`
 
 ```python

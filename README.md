@@ -6,6 +6,9 @@
 [![Coverage >=90%](https://img.shields.io/badge/coverage-%E2%89%A590%25-brightgreen)](https://github.com/Yuki-Imajuku/lmctx/actions/workflows/test.yml)
 [![GitHub stars](https://img.shields.io/github/stars/Yuki-Imajuku/lmctx?logo=github)](https://github.com/Yuki-Imajuku/lmctx/stargazers)
 [![PyPI version](https://img.shields.io/pypi/v/lmctx)](https://pypi.org/project/lmctx/)
+[![PyPI status](https://img.shields.io/pypi/status/lmctx)](https://pypi.org/project/lmctx/)
+[![PyPI format](https://img.shields.io/pypi/format/lmctx)](https://pypi.org/project/lmctx/)
+[![PyPI downloads](https://img.shields.io/pypi/dd/lmctx)](https://pypi.org/project/lmctx/)
 [![Python versions](https://img.shields.io/pypi/pyversions/lmctx)](https://pypi.org/project/lmctx/)
 
 **Context Kernel for LLM APIs.**
