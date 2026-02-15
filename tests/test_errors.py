@@ -5,6 +5,7 @@ from lmctx.errors import (
     BlobNotFoundError,
     ContextError,
     LmctxError,
+    PlanValidationError,
 )
 
 
@@ -22,6 +23,10 @@ def test_blob_integrity_is_lmctx_error() -> None:
 
 def test_context_error_is_lmctx_error() -> None:
     assert issubclass(ContextError, LmctxError)
+
+
+def test_plan_validation_error_is_lmctx_error() -> None:
+    assert issubclass(PlanValidationError, LmctxError)
 
 
 def test_blob_not_found_carries_blob_id() -> None:

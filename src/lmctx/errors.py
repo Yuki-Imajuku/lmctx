@@ -27,3 +27,7 @@ class BlobIntegrityError(LmctxError):
 
 class ContextError(LmctxError):
     """Raised for invalid operations on Context."""
+
+
+class PlanValidationError(LmctxError):
+    """Raised when RequestPlan validation fails in strict mode."""

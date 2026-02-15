@@ -6,6 +6,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Protocol, TypeVar, runtime_checkable
 
+from lmctx.errors import PlanValidationError
+
 if TYPE_CHECKING:
     from lmctx.context import Context
     from lmctx.spec import RunSpec
@@ -31,6 +33,11 @@ def _to_plain_dict(value: Mapping[str, Any] | dict[str, Any]) -> dict[str, Any]:
     if isinstance(normalized, dict):
         return normalized
     return {str(key): _to_plain_data(item) for key, item in value.items()}
+
+
+def _excluded_to_warning(item: ExcludedItem) -> str:
+    """Format one excluded item as an unused-parameter warning."""
+    return f"unused parameter '{item.description}': {item.reason}"
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,6 +80,42 @@ class RequestPlan:
         """Ensure request/extra payloads are plain container types."""
         object.__setattr__(self, "request", _to_plain_dict(self.request))
         object.__setattr__(self, "extra", _to_plain_dict(self.extra))
+
+    def unused_parameter_warnings(self) -> tuple[str, ...]:
+        """Return warning messages derived from excluded (unused) items."""
+        return tuple(_excluded_to_warning(item) for item in self.excluded)
+
+    def warning_messages(self, *, include_unused_parameters: bool = True) -> tuple[str, ...]:
+        """Return warnings, optionally including excluded unused-parameter warnings."""
+        if not include_unused_parameters:
+            return self.warnings
+        return (*self.warnings, *self.unused_parameter_warnings())
+
+    def assert_valid(
+        self,
+        *,
+        fail_on_warnings: bool = False,
+        fail_on_excluded: bool = False,
+    ) -> None:
+        """Raise PlanValidationError when the plan violates strict validation rules.
+
+        Validation behavior:
+        - `errors` always fail
+        - `warnings` fail when `fail_on_warnings=True`
+        - `excluded` (unused parameters) fail when `fail_on_excluded=True`
+        """
+        violations: list[str] = []
+
+        violations.extend(f"error: {message}" for message in self.errors)
+        if fail_on_warnings:
+            violations.extend(f"warning: {message}" for message in self.warnings)
+        if fail_on_excluded:
+            violations.extend(self.unused_parameter_warnings())
+
+        if violations:
+            joined = "\n- ".join(violations)
+            msg = f"RequestPlan validation failed:\n- {joined}"
+            raise PlanValidationError(msg)
 
 
 @runtime_checkable
