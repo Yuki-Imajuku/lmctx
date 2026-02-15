@@ -72,6 +72,12 @@ Query/helper methods:
 - `__len__() -> int`
 - `__iter__() -> Iterator[Message]`
 
+Serialization notes:
+
+- `to_dict()` default (`include_blob_payloads=False`) stores only `BlobReference` metadata, not bytes.
+- For cross-process replay with `InMemoryBlobStore`, use `include_blob_payloads=True` or provide a persistent `blob_store` to `from_dict(...)`.
+- `include_blob_payloads=True` is heavier because blob bytes are base64-embedded in the serialized payload.
+
 ### `Message` and `Part`
 
 ```python

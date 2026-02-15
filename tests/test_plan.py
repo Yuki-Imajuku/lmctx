@@ -32,6 +32,7 @@ def test_adapter_capabilities_valid_payload() -> None:
     assert capabilities.is_supported("seed")
     assert not capabilities.is_supported("seed", allow_partial=False)
     assert not capabilities.is_supported("cursor_chaining")
+    assert not capabilities.is_supported("unknown_field")
 
 
 def test_adapter_capabilities_rejects_invalid_level() -> None:
@@ -48,6 +49,15 @@ def test_adapter_capabilities_rejects_unknown_note_keys() -> None:
             id=AdapterId(provider="openai", endpoint="chat.completions"),
             fields={"tools": "yes"},
             notes={"seed": "not part of fields map"},
+        )
+
+
+def test_adapter_capabilities_rejects_non_string_note_value() -> None:
+    with pytest.raises(TypeError, match="Capability note for 'tools' must be a string"):
+        AdapterCapabilities(
+            id=AdapterId(provider="openai", endpoint="chat.completions"),
+            fields={"tools": "yes"},
+            notes={"tools": 1},  # type: ignore[arg-type]
         )
 
 

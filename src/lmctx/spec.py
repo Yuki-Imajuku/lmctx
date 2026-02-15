@@ -4,6 +4,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
 
+from lmctx.serde import optional_float, optional_int, optional_string, string_tuple, to_plain_data
 from lmctx.types import ToolSpecification
 
 
@@ -24,14 +25,8 @@ class Instructions:
     @classmethod
     def from_dict(cls, value: Mapping[str, object]) -> "Instructions":
         """Deserialize Instructions from a plain dictionary."""
-        system = value.get("system")
-        if system is not None and not isinstance(system, str):
-            msg = "Instructions.system must be a string or None."
-            raise TypeError(msg)
-        developer = value.get("developer")
-        if developer is not None and not isinstance(developer, str):
-            msg = "Instructions.developer must be a string or None."
-            raise TypeError(msg)
+        system = optional_string(value.get("system"), field_name="Instructions.system")
+        developer = optional_string(value.get("developer"), field_name="Instructions.developer")
         return cls(
             system=system,
             developer=developer,
@@ -97,16 +92,16 @@ class RunSpec:
                 {
                     "name": tool.name,
                     "description": tool.description,
-                    "input_schema": _to_plain_data(tool.input_schema),
+                    "input_schema": to_plain_data(tool.input_schema),
                 }
                 for tool in self.tools
             ],
-            "tool_choice": _to_plain_data(self.tool_choice),
-            "response_schema": _to_plain_data(self.response_schema),
+            "tool_choice": to_plain_data(self.tool_choice),
+            "response_schema": to_plain_data(self.response_schema),
             "response_modalities": list(self.response_modalities),
-            "extra_body": _to_plain_data(self.extra_body),
-            "extra_headers": _to_plain_data(self.extra_headers),
-            "extra_query": _to_plain_data(self.extra_query),
+            "extra_body": to_plain_data(self.extra_body),
+            "extra_headers": to_plain_data(self.extra_headers),
+            "extra_query": to_plain_data(self.extra_query),
             "base_url": self.base_url,
         }
 
@@ -128,16 +123,12 @@ class RunSpec:
             msg = "RunSpec.model must be a non-empty string."
             raise TypeError(msg)
 
-        api_version = value.get("api_version")
-        if api_version is not None and not isinstance(api_version, str):
-            msg = "RunSpec.api_version must be a string or None."
-            raise TypeError(msg)
-
+        api_version = optional_string(value.get("api_version"), field_name="RunSpec.api_version")
         instructions = _instructions_from_dict_value(value.get("instructions"))
         tools = _tools_from_dict_value(value.get("tools"))
-        response_modalities = _string_tuple_from_dict_value(
+        response_modalities = string_tuple(
             value.get("response_modalities"),
-            field_name="response_modalities",
+            field_name="RunSpec.response_modalities",
         )
 
         response_schema = value.get("response_schema")
@@ -155,35 +146,24 @@ class RunSpec:
             model=model,
             api_version=api_version,
             instructions=instructions,
-            max_output_tokens=_optional_int_from_dict_value(
+            max_output_tokens=optional_int(
                 value.get("max_output_tokens"),
-                field_name="max_output_tokens",
+                field_name="RunSpec.max_output_tokens",
             ),
-            temperature=_optional_float_from_dict_value(value.get("temperature"), field_name="temperature"),
-            top_p=_optional_float_from_dict_value(value.get("top_p"), field_name="top_p"),
-            seed=_optional_int_from_dict_value(value.get("seed"), field_name="seed"),
+            temperature=optional_float(value.get("temperature"), field_name="RunSpec.temperature"),
+            top_p=optional_float(value.get("top_p"), field_name="RunSpec.top_p"),
+            seed=optional_int(value.get("seed"), field_name="RunSpec.seed"),
             tools=tools,
-            tool_choice=_to_plain_data(value.get("tool_choice")),
-            response_schema={str(key): _to_plain_data(item) for key, item in response_schema.items()}
+            tool_choice=to_plain_data(value.get("tool_choice")),
+            response_schema={str(key): to_plain_data(item) for key, item in response_schema.items()}
             if isinstance(response_schema, Mapping)
             else None,
             response_modalities=response_modalities,
             extra_body=extra_body,
             extra_headers=extra_headers,
             extra_query=extra_query,
-            base_url=_optional_string_from_dict_value(value.get("base_url"), field_name="base_url"),
+            base_url=optional_string(value.get("base_url"), field_name="RunSpec.base_url"),
         )
-
-
-def _to_plain_data(value: object) -> object:
-    """Recursively normalize Mapping/tuple containers into plain dict/list values."""
-    if isinstance(value, Mapping):
-        return {str(key): _to_plain_data(item) for key, item in value.items()}
-    if isinstance(value, tuple):
-        return [_to_plain_data(item) for item in value]
-    if isinstance(value, list):
-        return [_to_plain_data(item) for item in value]
-    return value
 
 
 def _instructions_from_dict_value(value: object) -> Instructions | None:
@@ -200,7 +180,7 @@ def _tools_from_dict_value(value: object) -> tuple[ToolSpecification, ...]:
     """Deserialize the tools list payload."""
     if value is None:
         return ()
-    if not isinstance(value, list | tuple):
+    if not isinstance(value, (list, tuple)):
         msg = "RunSpec.tools must be a sequence."
         raise TypeError(msg)
 
@@ -229,28 +209,11 @@ def _tools_from_dict_value(value: object) -> tuple[ToolSpecification, ...]:
             ToolSpecification(
                 name=name,
                 description=description,
-                input_schema={str(key): _to_plain_data(item) for key, item in input_schema.items()},
+                input_schema={str(key): to_plain_data(item) for key, item in input_schema.items()},
             )
         )
 
     return tuple(tools)
-
-
-def _string_tuple_from_dict_value(value: object, *, field_name: str) -> tuple[str, ...]:
-    """Deserialize an optional sequence of strings into tuple[str, ...]."""
-    if value is None:
-        return ()
-    if not isinstance(value, list | tuple):
-        msg = f"RunSpec.{field_name} must be a sequence of strings."
-        raise TypeError(msg)
-
-    result: list[str] = []
-    for index, item in enumerate(value):
-        if not isinstance(item, str):
-            msg = f"RunSpec.{field_name}[{index}] must be a string."
-            raise TypeError(msg)
-        result.append(item)
-    return tuple(result)
 
 
 def _mapping_from_dict_value(value: object, *, field_name: str) -> dict[str, object]:
@@ -260,7 +223,7 @@ def _mapping_from_dict_value(value: object, *, field_name: str) -> dict[str, obj
     if not isinstance(value, Mapping):
         msg = f"RunSpec.{field_name} must be a mapping."
         raise TypeError(msg)
-    return {str(key): _to_plain_data(item) for key, item in value.items()}
+    return {str(key): to_plain_data(item) for key, item in value.items()}
 
 
 def _string_mapping_from_dict_value(value: object, *, field_name: str) -> dict[str, str]:
@@ -280,43 +243,11 @@ def _string_mapping_from_dict_value(value: object, *, field_name: str) -> dict[s
     return result
 
 
-def _optional_string_from_dict_value(value: object, *, field_name: str) -> str | None:
-    """Deserialize an optional string field."""
-    if value is None:
-        return None
-    if not isinstance(value, str):
-        msg = f"RunSpec.{field_name} must be a string or None."
-        raise TypeError(msg)
-    return value
-
-
-def _optional_int_from_dict_value(value: object, *, field_name: str) -> int | None:
-    """Deserialize an optional integer field."""
-    if value is None:
-        return None
-    if not isinstance(value, int):
-        msg = f"RunSpec.{field_name} must be an int or None."
-        raise TypeError(msg)
-    return value
-
-
-def _optional_float_from_dict_value(value: object, *, field_name: str) -> float | None:
-    """Deserialize an optional float field."""
-    if value is None:
-        return None
-    if not isinstance(value, int | float):
-        msg = f"RunSpec.{field_name} must be a float or None."
-        raise TypeError(msg)
-    return float(value)
-
-
 def _freeze_value(value: object) -> object:
     """Recursively freeze mapping/sequence payload containers."""
     if isinstance(value, Mapping):
         return MappingProxyType({str(key): _freeze_value(item) for key, item in value.items()})
-    if isinstance(value, tuple):
-        return tuple(_freeze_value(item) for item in value)
-    if isinstance(value, list):
+    if isinstance(value, (tuple, list)):
         return tuple(_freeze_value(item) for item in value)
     return value
 

@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING, Literal, TypeVar, overload
 
 from lmctx.blobs import BlobReference, BlobStore, InMemoryBlobStore
 from lmctx.errors import BlobIntegrityError, BlobNotFoundError, ContextError
+from lmctx.serde import as_str_object_dict, optional_int, optional_string, require_int, to_plain_data
 from lmctx.types import Cursor, Message, Part, Role, Usage
 
 if TYPE_CHECKING:
@@ -35,45 +36,6 @@ def _normalize_content(content: str | Part | Sequence[Part]) -> tuple[Part, ...]
             raise TypeError(msg)
         parts.append(item)
     return tuple(parts)
-
-
-def _to_plain_data(value: object) -> object:
-    """Recursively normalize Mapping/tuple containers into plain dict/list values."""
-    if isinstance(value, Mapping):
-        return {str(key): _to_plain_data(item) for key, item in value.items()}
-    if isinstance(value, tuple):
-        return [_to_plain_data(item) for item in value]
-    if isinstance(value, list):
-        return [_to_plain_data(item) for item in value]
-    return value
-
-
-def _as_str_object_dict(value: object, *, field_name: str) -> dict[str, object]:
-    """Validate and normalize a mapping value into ``dict[str, object]``."""
-    if not isinstance(value, Mapping):
-        msg = f"{field_name} must be a mapping."
-        raise TypeError(msg)
-    return {str(key): item for key, item in value.items()}
-
-
-def _optional_string(value: object, *, field_name: str) -> str | None:
-    """Validate an optional string field."""
-    if value is None:
-        return None
-    if not isinstance(value, str):
-        msg = f"{field_name} must be a string or None."
-        raise TypeError(msg)
-    return value
-
-
-def _optional_int(value: object, *, field_name: str) -> int | None:
-    """Validate an optional integer field."""
-    if value is None:
-        return None
-    if not isinstance(value, int):
-        msg = f"{field_name} must be an int or None."
-        raise TypeError(msg)
-    return value
 
 
 class _SerializedBlobStore:
@@ -130,7 +92,7 @@ def _blob_ref_to_dict(ref: BlobReference) -> dict[str, object]:
 
 def _blob_ref_from_dict(value: object, *, field_name: str) -> BlobReference:
     """Deserialize BlobReference from a plain dictionary."""
-    data = _as_str_object_dict(value, field_name=field_name)
+    data = as_str_object_dict(value, field_name=field_name)
 
     blob_id = data.get("id")
     if not isinstance(blob_id, str) or not blob_id:
@@ -142,17 +104,14 @@ def _blob_ref_from_dict(value: object, *, field_name: str) -> BlobReference:
         msg = f"{field_name}.sha256 must be a non-empty string."
         raise TypeError(msg)
 
-    media_type = _optional_string(data.get("media_type"), field_name=f"{field_name}.media_type")
+    media_type = optional_string(data.get("media_type"), field_name=f"{field_name}.media_type")
 
     kind = data.get("kind")
     if not isinstance(kind, str) or not kind:
         msg = f"{field_name}.kind must be a non-empty string."
         raise TypeError(msg)
 
-    size = data.get("size")
-    if not isinstance(size, int):
-        msg = f"{field_name}.size must be an int."
-        raise TypeError(msg)
+    size = require_int(data.get("size"), field_name=f"{field_name}.size")
 
     return BlobReference(
         id=blob_id,
@@ -169,7 +128,7 @@ def _part_to_dict(part: Part) -> dict[str, object]:
     if part.text is not None:
         payload["text"] = part.text
     if part.json is not None:
-        payload["json"] = _to_plain_data(part.json)
+        payload["json"] = to_plain_data(part.json)
     if part.blob is not None:
         payload["blob"] = _blob_ref_to_dict(part.blob)
     if part.tool_call_id is not None:
@@ -177,30 +136,28 @@ def _part_to_dict(part: Part) -> dict[str, object]:
     if part.tool_name is not None:
         payload["tool_name"] = part.tool_name
     if part.tool_args is not None:
-        payload["tool_args"] = _to_plain_data(part.tool_args)
+        payload["tool_args"] = to_plain_data(part.tool_args)
     if part.tool_output is not None:
-        payload["tool_output"] = _to_plain_data(part.tool_output)
+        payload["tool_output"] = to_plain_data(part.tool_output)
     if part.provider_raw is not None:
-        payload["provider_raw"] = _to_plain_data(part.provider_raw)
+        payload["provider_raw"] = to_plain_data(part.provider_raw)
     return payload
 
 
 def _part_from_dict(value: object, *, field_name: str) -> Part:
     """Deserialize Part from a plain dictionary."""
-    data = _as_str_object_dict(value, field_name=field_name)
+    data = as_str_object_dict(value, field_name=field_name)
 
     part_type = data.get("type")
     if not isinstance(part_type, str) or not part_type:
         msg = f"{field_name}.type must be a non-empty string."
         raise TypeError(msg)
 
-    text = _optional_string(data.get("text"), field_name=f"{field_name}.text")
+    text = optional_string(data.get("text"), field_name=f"{field_name}.text")
 
     json_value = data.get("json")
     json_payload = (
-        {str(key): _to_plain_data(item) for key, item in json_value.items()}
-        if isinstance(json_value, Mapping)
-        else None
+        {str(key): to_plain_data(item) for key, item in json_value.items()} if isinstance(json_value, Mapping) else None
     )
     if json_value is not None and json_payload is None:
         msg = f"{field_name}.json must be a mapping or None."
@@ -209,12 +166,12 @@ def _part_from_dict(value: object, *, field_name: str) -> Part:
     blob_value = data.get("blob")
     blob = _blob_ref_from_dict(blob_value, field_name=f"{field_name}.blob") if blob_value is not None else None
 
-    tool_call_id = _optional_string(data.get("tool_call_id"), field_name=f"{field_name}.tool_call_id")
-    tool_name = _optional_string(data.get("tool_name"), field_name=f"{field_name}.tool_name")
+    tool_call_id = optional_string(data.get("tool_call_id"), field_name=f"{field_name}.tool_call_id")
+    tool_name = optional_string(data.get("tool_name"), field_name=f"{field_name}.tool_name")
 
     tool_args_value = data.get("tool_args")
     tool_args = (
-        {str(key): _to_plain_data(item) for key, item in tool_args_value.items()}
+        {str(key): to_plain_data(item) for key, item in tool_args_value.items()}
         if isinstance(tool_args_value, Mapping)
         else None
     )
@@ -224,7 +181,7 @@ def _part_from_dict(value: object, *, field_name: str) -> Part:
 
     provider_raw_value = data.get("provider_raw")
     provider_raw = (
-        {str(key): _to_plain_data(item) for key, item in provider_raw_value.items()}
+        {str(key): to_plain_data(item) for key, item in provider_raw_value.items()}
         if isinstance(provider_raw_value, Mapping)
         else None
     )
@@ -240,7 +197,7 @@ def _part_from_dict(value: object, *, field_name: str) -> Part:
         tool_call_id=tool_call_id,
         tool_name=tool_name,
         tool_args=tool_args,
-        tool_output=_to_plain_data(data.get("tool_output")),
+        tool_output=to_plain_data(data.get("tool_output")),
         provider_raw=provider_raw,
     )
 
@@ -259,7 +216,7 @@ def _message_to_dict(message: Message) -> dict[str, object]:
 
 def _message_from_dict(value: object, *, field_name: str) -> Message:
     """Deserialize Message from a plain dictionary."""
-    data = _as_str_object_dict(value, field_name=field_name)
+    data = as_str_object_dict(value, field_name=field_name)
 
     role_value = data.get("role")
     if not isinstance(role_value, str) or role_value not in _ROLE_VALUES:
@@ -276,9 +233,9 @@ def _message_from_dict(value: object, *, field_name: str) -> Message:
         for index, part_value in enumerate(parts_value)
     )
 
-    message_id = _optional_string(data.get("id"), field_name=f"{field_name}.id")
-    provider = _optional_string(data.get("provider"), field_name=f"{field_name}.provider")
-    turn_id = _optional_string(data.get("turn_id"), field_name=f"{field_name}.turn_id")
+    message_id = optional_string(data.get("id"), field_name=f"{field_name}.id")
+    provider = optional_string(data.get("provider"), field_name=f"{field_name}.provider")
+    turn_id = optional_string(data.get("turn_id"), field_name=f"{field_name}.turn_id")
 
     timestamp_value = data.get("timestamp")
     if timestamp_value is None:
@@ -318,11 +275,11 @@ def _cursor_from_dict(value: object) -> Cursor:
     """Deserialize Cursor from a plain dictionary."""
     if value is None:
         return Cursor()
-    data = _as_str_object_dict(value, field_name="Context.cursor")
+    data = as_str_object_dict(value, field_name="Context.cursor")
     return Cursor(
-        last_response_id=_optional_string(data.get("last_response_id"), field_name="Context.cursor.last_response_id"),
-        conversation_id=_optional_string(data.get("conversation_id"), field_name="Context.cursor.conversation_id"),
-        session_id=_optional_string(data.get("session_id"), field_name="Context.cursor.session_id"),
+        last_response_id=optional_string(data.get("last_response_id"), field_name="Context.cursor.last_response_id"),
+        conversation_id=optional_string(data.get("conversation_id"), field_name="Context.cursor.conversation_id"),
+        session_id=optional_string(data.get("session_id"), field_name="Context.cursor.session_id"),
     )
 
 
@@ -332,17 +289,17 @@ def _usage_to_dict(usage: Usage) -> dict[str, object]:
         "input_tokens": usage.input_tokens,
         "output_tokens": usage.output_tokens,
         "total_tokens": usage.total_tokens,
-        "provider_usage": _to_plain_data(usage.provider_usage),
+        "provider_usage": to_plain_data(usage.provider_usage),
     }
 
 
 def _usage_from_dict(value: object, *, field_name: str) -> Usage:
     """Deserialize Usage from a plain dictionary."""
-    data = _as_str_object_dict(value, field_name=field_name)
+    data = as_str_object_dict(value, field_name=field_name)
 
     provider_usage_value = data.get("provider_usage")
     provider_usage = (
-        {str(key): _to_plain_data(item) for key, item in provider_usage_value.items()}
+        {str(key): to_plain_data(item) for key, item in provider_usage_value.items()}
         if isinstance(provider_usage_value, Mapping)
         else {}
     )
@@ -351,9 +308,9 @@ def _usage_from_dict(value: object, *, field_name: str) -> Usage:
         raise TypeError(msg)
 
     return Usage(
-        input_tokens=_optional_int(data.get("input_tokens"), field_name=f"{field_name}.input_tokens"),
-        output_tokens=_optional_int(data.get("output_tokens"), field_name=f"{field_name}.output_tokens"),
-        total_tokens=_optional_int(data.get("total_tokens"), field_name=f"{field_name}.total_tokens"),
+        input_tokens=optional_int(data.get("input_tokens"), field_name=f"{field_name}.input_tokens"),
+        output_tokens=optional_int(data.get("output_tokens"), field_name=f"{field_name}.output_tokens"),
+        total_tokens=optional_int(data.get("total_tokens"), field_name=f"{field_name}.total_tokens"),
         provider_usage=provider_usage,
     )
 
@@ -397,7 +354,7 @@ def _deserialize_blob_store(value: object) -> BlobStore:
 
     blobs_by_id: dict[str, bytes] = {}
     for index, payload_value in enumerate(value):
-        payload = _as_str_object_dict(payload_value, field_name=f"Context.blob_payloads[{index}]")
+        payload = as_str_object_dict(payload_value, field_name=f"Context.blob_payloads[{index}]")
         ref = _blob_ref_from_dict(payload.get("ref"), field_name=f"Context.blob_payloads[{index}].ref")
 
         data_b64 = payload.get("data_b64")
@@ -581,8 +538,12 @@ class Context:
     def to_dict(self, *, include_blob_payloads: bool = False) -> dict[str, object]:
         """Serialize Context to a plain dictionary.
 
-        By default, only BlobReference metadata is serialized. Set
-        ``include_blob_payloads=True`` to embed referenced blob bytes as base64.
+        By default, only BlobReference metadata is serialized. This keeps payloads
+        small but requires an external BlobStore to resolve blobs later.
+
+        Set ``include_blob_payloads=True`` to embed referenced blob bytes as
+        base64 for portable cross-process persistence. This increases serialized
+        size (base64 overhead plus duplicated binary content in the dict).
         """
         payload: dict[str, object] = {
             "messages": [_message_to_dict(message) for message in self.messages],
@@ -600,7 +561,13 @@ class Context:
         *,
         blob_store: BlobStore | None = None,
     ) -> Context:
-        """Deserialize Context from a plain dictionary."""
+        """Deserialize Context from a plain dictionary.
+
+        Blob restore behavior:
+        - ``blob_store`` provided: use that store for blob references.
+        - ``blob_payloads`` provided: hydrate an internal serialized blob store.
+        - neither provided: use a new empty InMemoryBlobStore.
+        """
         messages_value = value.get("messages", ())
         if not isinstance(messages_value, list | tuple):
             msg = "Context.messages must be a sequence."
