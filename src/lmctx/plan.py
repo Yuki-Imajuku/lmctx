@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeVar, cast, runtime_checkable
+from typing import TYPE_CHECKING, Any, Literal, Protocol, TypeVar, runtime_checkable
 
 from lmctx.errors import PlanValidationError
 
@@ -16,7 +16,6 @@ if TYPE_CHECKING:
 
 ResponseT_contra = TypeVar("ResponseT_contra", contravariant=True)
 CapabilityLevel = Literal["yes", "partial", "no"]
-_CAPABILITY_LEVELS = frozenset({"yes", "partial", "no"})
 
 
 def _to_plain_data(value: Any) -> Any:
@@ -38,14 +37,23 @@ def _to_plain_dict(value: Mapping[str, Any] | dict[str, Any]) -> dict[str, Any]:
     return {str(key): _to_plain_data(item) for key, item in value.items()}
 
 
+def _parse_capability_level(field_name: str, level: object) -> CapabilityLevel:
+    """Validate and return a capability level literal."""
+    if level == "yes":
+        return "yes"
+    if level == "partial":
+        return "partial"
+    if level == "no":
+        return "no"
+    msg = f"Invalid capability level for {field_name!r}: {level!r}. Expected one of yes/partial/no."
+    raise ValueError(msg)
+
+
 def _freeze_capability_fields(fields: Mapping[str, object]) -> Mapping[str, CapabilityLevel]:
     """Normalize capability levels into an immutable mapping."""
     normalized: dict[str, CapabilityLevel] = {}
     for field_name, level in fields.items():
-        if not isinstance(level, str) or level not in _CAPABILITY_LEVELS:
-            msg = f"Invalid capability level for {field_name!r}: {level!r}. Expected one of yes/partial/no."
-            raise ValueError(msg)
-        normalized[str(field_name)] = cast("CapabilityLevel", level)
+        normalized[str(field_name)] = _parse_capability_level(field_name, level)
     return MappingProxyType(normalized)
 
 
@@ -97,8 +105,7 @@ class AdapterCapabilities:
 
     def level(self, field_name: str) -> CapabilityLevel | None:
         """Return support level for a capability field."""
-        value = self.fields.get(field_name)
-        return cast("CapabilityLevel | None", value)
+        return self.fields.get(field_name)
 
     def is_supported(self, field_name: str, *, allow_partial: bool = True) -> bool:
         """Return whether a field is supported by this adapter."""

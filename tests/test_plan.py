@@ -38,7 +38,7 @@ def test_adapter_capabilities_rejects_invalid_level() -> None:
     with pytest.raises(ValueError, match="Invalid capability level"):
         AdapterCapabilities(
             id=AdapterId(provider="openai", endpoint="chat.completions"),
-            fields={"tools": "maybe"},
+            fields={"tools": "maybe"},  # type: ignore[arg-type]
         )
 
 
