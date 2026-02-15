@@ -1,0 +1,76 @@
+name: Bug report
+description: Report a reproducible defect in lmctx.
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug report.
+        Please include a minimal reproduction and expected vs actual behavior.
+  - type: input
+    id: version
+    attributes:
+      label: lmctx version
+      description: Output of `pip show lmctx` (Version field) or installed git ref.
+      placeholder: "e.g. 0.1.0"
+    validations:
+      required: true
+  - type: input
+    id: python
+    attributes:
+      label: Python version
+      placeholder: "e.g. 3.12.8"
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Related adapter/provider
+      options:
+        - openai
+        - anthropic
+        - google
+        - bedrock
+        - core (non-adapter)
+        - unknown
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Provide a minimal script or sequence.
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs / traceback
+      description: Paste stack traces or request plan diagnostics if available.
+      render: shell
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submit checks
+      options:
+        - label: I searched existing issues and did not find a duplicate.
+          required: true
+        - label: I can reproduce this on the latest main branch.
+          required: false

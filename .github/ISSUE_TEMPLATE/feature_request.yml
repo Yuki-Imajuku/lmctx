@@ -1,0 +1,54 @@
+name: Feature request
+description: Propose an enhancement to lmctx.
+title: "[Feature]: "
+labels: ["enhancement", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the user problem first, then propose the API/design.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What problem are you trying to solve?
+      placeholder: "When ... I cannot ..."
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Include suggested API shape if possible.
+      placeholder: |
+        - New API:
+        - Expected behavior:
+        - Compatibility impact:
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches you considered.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - adapters
+        - context / data model
+        - blob store
+        - testing / tooling
+        - docs
+        - examples
+        - other
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submit checks
+      options:
+        - label: I searched existing issues and did not find a duplicate.
+          required: true

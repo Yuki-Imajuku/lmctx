@@ -291,3 +291,43 @@ All checks must pass before a PR can be merged.
 3. **Write tests** for new functionality. Maintain or improve coverage.
 4. **Keep PRs focused.** One feature or fix per PR.
 5. **Follow existing patterns.** Look at neighboring code for style guidance.
+
+## Branch Naming Convention
+
+Use descriptive branch names in lowercase kebab-case.
+
+- Format: `<type>/<topic>`
+- Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`
+- Topic: short, specific, and implementation-oriented
+- For Codex-created branches, prepend `codex/` (for example `codex/feat/new-feature`).
+- For Claude Code created branches, prepend `claude/` (for example `claude/feat/new-feature`).
+- For other AI agent created branches, prepend `<agent-name>/` (for example `opencode/feat/new-feature`).
+
+Examples:
+- `feat/add-xxx-yyy`
+- `fix/handle-edge-case-in-zzz`
+- `docs/update-aaa-examples`
+- `refactor/clean-up-bbb-module`
+- `test/add-tests-for-ccc`
+- `chore/update-dependencies`
+- `codex/feat/implement-meow-bow-wow`
+- `claude/fix/resolve-fizz-buzz-issue`
+
+## AI-Assisted Contributions
+
+AI-assisted contributions are welcome, but responsibility remains with the human contributor who commits the change.
+
+- You must review and understand the proposed code before submitting.
+- You are responsible for correctness, tests, security, and licensing/compliance.
+- PRs that are effectively unreviewed auto-generated dumps may be closed.
+- Submissions should respect maintainer time: keep changes scoped, explain intent, and include validation evidence.
+
+## Community and OSS Workflow Files
+
+This repository includes standard GitHub community workflow files:
+
+- Issue templates: `.github/ISSUE_TEMPLATE/`
+- Pull request template: `.github/pull_request_template.md`
+- Code of Conduct: `CODE_OF_CONDUCT.md`
+- Security policy: `SECURITY.md`
+- Support guide: `SUPPORT.md`

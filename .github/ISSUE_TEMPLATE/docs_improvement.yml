@@ -1,0 +1,25 @@
+name: Documentation improvement
+description: Report unclear docs or propose doc additions.
+title: "[Docs]: "
+labels: ["documentation", "needs-triage"]
+body:
+  - type: textarea
+    id: current
+    attributes:
+      label: Current documentation issue
+      description: What is confusing, missing, or inaccurate?
+    validations:
+      required: true
+  - type: textarea
+    id: target
+    attributes:
+      label: Suggested improvement
+      description: What should be added or changed?
+    validations:
+      required: true
+  - type: input
+    id: location
+    attributes:
+      label: Relevant file/path
+      description: For example `README.md` or `docs/adapters.md`.
+      placeholder: "docs/..."
