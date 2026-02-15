@@ -28,6 +28,29 @@ This page summarizes built-in adapters in `src/lmctx/adapters/` and how `RunSpec
 
 `AutoAdapter` resolves by `(provider, endpoint, api_version)` with fallback to `(provider, endpoint, None)`.
 
+## Capability API
+
+Each adapter exposes runtime capability metadata:
+
+```python
+from lmctx.adapters import OpenAIChatCompletionsAdapter
+
+adapter = OpenAIChatCompletionsAdapter()
+caps = adapter.capabilities()
+print(caps.level("seed"))  # "yes"
+print(caps.is_supported("cursor_chaining"))  # False
+```
+
+`AutoAdapter` also provides capability lookup for a `RunSpec`:
+
+```python
+from lmctx.adapters import AutoAdapter
+
+router = AutoAdapter()
+caps = router.capabilities(spec)
+all_caps = router.available_capabilities()
+```
+
 ## RunSpec Support Matrix
 
 Legend:

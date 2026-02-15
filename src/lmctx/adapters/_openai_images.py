@@ -11,7 +11,7 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
 from lmctx.adapters._util import _deep_merge, _json_object, _plan_extra_hints, _to_dict, _validate_adapter_spec
-from lmctx.plan import AdapterId, ExcludedItem, RequestPlan
+from lmctx.plan import AdapterCapabilities, AdapterId, ExcludedItem, RequestPlan
 from lmctx.types import Message, Part, Usage
 
 if TYPE_CHECKING:
@@ -151,10 +151,39 @@ def _image_part_from_item(ctx: Context, item: dict[str, object]) -> Part | None:
     return None
 
 
+_CAPABILITIES = AdapterCapabilities(
+    id=AdapterId(provider="openai", endpoint="images.generate"),
+    fields={
+        "instructions": "partial",
+        "max_output_tokens": "no",
+        "temperature": "no",
+        "top_p": "no",
+        "seed": "no",
+        "tools": "no",
+        "tool_choice": "no",
+        "response_schema": "no",
+        "response_modalities": "partial",
+        "extra_body": "yes",
+        "extra_headers": "yes",
+        "extra_query": "yes",
+        "cursor_chaining": "no",
+    },
+    notes={
+        "instructions": "Instructions are prepended to prompt text.",
+        "response_modalities": "Only maps to response_format for DALL-E models.",
+        "cursor_chaining": "images.generate is stateless in this adapter.",
+    },
+)
+
+
 class OpenAIImagesAdapter:
     """Adapter for the OpenAI Images API (``images.generate``)."""
 
     id = AdapterId(provider="openai", endpoint="images.generate")
+
+    def capabilities(self) -> AdapterCapabilities:
+        """Return capability metadata for this adapter."""
+        return _CAPABILITIES
 
     def plan(self, ctx: Context, spec: RunSpec) -> RequestPlan:
         """Build an OpenAI Images API request from Context and RunSpec."""

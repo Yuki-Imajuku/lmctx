@@ -12,7 +12,7 @@ from lmctx.errors import (
     LmctxError,
     PlanValidationError,
 )
-from lmctx.plan import AdapterId, ExcludedItem, LmctxAdapter, RequestPlan
+from lmctx.plan import AdapterCapabilities, AdapterId, CapabilityLevel, ExcludedItem, LmctxAdapter, RequestPlan
 from lmctx.spec import Instructions, RunSpec
 from lmctx.types import Cursor, Message, Part, Role, ToolSpecification, Usage
 
@@ -28,12 +28,14 @@ def _detect_version() -> str:
 __version__ = _detect_version()
 
 __all__ = [
+    "AdapterCapabilities",
     "AdapterId",
     "AutoAdapter",
     "BlobIntegrityError",
     "BlobNotFoundError",
     "BlobReference",
     "BlobStore",
+    "CapabilityLevel",
     "Context",
     "ContextError",
     "Cursor",
