@@ -44,6 +44,9 @@ print(caps.is_supported("cursor_chaining"))  # False
 `AutoAdapter` also provides capability lookup for a `RunSpec`:
 
 ```python
+from lmctx.adapters import AutoAdapter
+
+router = AutoAdapter()
 caps = router.capabilities(spec)
 all_caps = router.available_capabilities()
 ```

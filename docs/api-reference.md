@@ -198,7 +198,7 @@ CapabilityLevel = Literal["yes", "partial", "no"]
 class AdapterCapabilities:
     id: AdapterId
     fields: Mapping[str, CapabilityLevel]
-    notes: Mapping[str, str] = MappingProxyType({})
+    notes: Mapping[str, str] = field(default_factory=lambda: MappingProxyType({}))
 ```
 
 - `level(field_name) -> CapabilityLevel | None`
