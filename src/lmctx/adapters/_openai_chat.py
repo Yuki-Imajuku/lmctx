@@ -252,7 +252,7 @@ def _message_to_openai(msg: Message, store: BlobStore) -> list[dict[str, object]
     return [_content_to_openai(msg, store)]
 
 
-def _part_exclusion_reason_for_role(part: Part, role: str) -> str | None:  # noqa: C901, PLR0911, PLR0912
+def _part_exclusion_reason_for_role(part: Part, role: str) -> str | None:
     """Return a reason when a part cannot be serialized for the given role."""
     if role in {"user", "system", "developer"}:
         if part.type == "text":
@@ -296,7 +296,7 @@ def _part_exclusion_reason_for_role(part: Part, role: str) -> str | None:  # noq
     return f"role '{role}' is not supported by chat.completions"
 
 
-def _validate_planned_message(message: dict[str, object]) -> str | None:  # noqa: C901, PLR0911
+def _validate_planned_message(message: dict[str, object]) -> str | None:
     """Validate a converted Chat Completions message payload."""
     role = message.get("role")
 
@@ -440,7 +440,7 @@ class OpenAIChatCompletionsAdapter:
         """Return capability metadata for this adapter."""
         return _CAPABILITIES
 
-    def plan(self, ctx: Context, spec: RunSpec) -> RequestPlan:  # noqa: C901, PLR0912
+    def plan(self, ctx: Context, spec: RunSpec) -> RequestPlan:
         """Build an OpenAI Chat Completions request from Context and RunSpec."""
         _validate_adapter_spec(self.id, spec)
         messages: list[dict[str, object]] = []

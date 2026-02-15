@@ -186,7 +186,7 @@ def _file_part_to_google(part: Part, store: BlobStore) -> dict[str, object] | No
     return None
 
 
-def _tool_call_part_from_provider_raw(part: Part) -> dict[str, object] | None:  # noqa: C901
+def _tool_call_part_from_provider_raw(part: Part) -> dict[str, object] | None:
     """Preserve provider tool-call part payload (function call + thought signature) when available."""
     raw = _as_str_object_dict(part.provider_raw)
     if raw is None:
@@ -251,7 +251,7 @@ def _tool_call_identity(part: Part) -> tuple[str, str] | None:
     return None
 
 
-def _part_to_google(  # noqa: C901, PLR0911, PLR0912
+def _part_to_google(
     part: Part,
     role: str,
     store: BlobStore,
@@ -317,9 +317,7 @@ def _part_to_google(  # noqa: C901, PLR0911, PLR0912
     return None
 
 
-def _part_exclusion_reason_for_role(  # noqa: C901, PLR0911, PLR0912
-    part: Part, role: str, tool_name_by_call_id: Mapping[str, str]
-) -> str | None:
+def _part_exclusion_reason_for_role(part: Part, role: str, tool_name_by_call_id: Mapping[str, str]) -> str | None:
     """Return a reason when a part cannot be serialized for the given role."""
     if role in {"user", "assistant"}:
         if part.type == "text":
@@ -394,7 +392,7 @@ def _normalize_tool_args(args_raw: object) -> dict[str, object]:
     return {"_raw": args_raw}
 
 
-def _part_from_google_response(ctx: Context, raw_part: object) -> Part | None:  # noqa: C901
+def _part_from_google_response(ctx: Context, raw_part: object) -> Part | None:
     """Convert a single Google response part into an lmctx Part."""
     raw = _as_str_object_dict(raw_part)
     if raw is None:
@@ -447,7 +445,7 @@ def _part_from_google_response(ctx: Context, raw_part: object) -> Part | None:  
     )
 
 
-def _build_contents(  # noqa: C901, PLR0912
+def _build_contents(
     ctx: Context,
 ) -> tuple[str | None, list[_GoogleContentItem], tuple[ExcludedItem, ...]]:
     """Build Google system instruction and contents list from Context.
@@ -610,12 +608,12 @@ _CAPABILITIES = AdapterCapabilities(
         "response_schema": "yes",
         "response_modalities": "yes",
         "extra_body": "yes",
-        "extra_headers": "no",
+        "extra_headers": "yes",
         "extra_query": "no",
         "cursor_chaining": "no",
     },
     notes={
-        "extra_headers": "Per-request transport headers are not mapped in this adapter.",
+        "extra_headers": "Mapped to config.http_options.headers for generate_content calls.",
         "extra_query": "Per-request query overrides are not mapped in this adapter.",
         "cursor_chaining": "generate_content is stateless in this adapter.",
     },
@@ -640,7 +638,7 @@ class GoogleGenAIAdapter:
         """Return capability metadata for this adapter."""
         return _CAPABILITIES
 
-    def plan(self, ctx: Context, spec: RunSpec) -> RequestPlan:  # noqa: C901
+    def plan(self, ctx: Context, spec: RunSpec) -> RequestPlan:
         """Build a Google GenAI request from Context and RunSpec."""
         _validate_adapter_spec(self.id, spec)
         included: list[str] = []
@@ -674,19 +672,31 @@ class GoogleGenAIAdapter:
         if not contents:
             errors.append("Google generate_content requires at least one message with Google-compatible content.")
 
+        if spec.extra_headers:
+            config_obj = request.get("config")
+            config = {str(key): value for key, value in config_obj.items()} if isinstance(config_obj, Mapping) else {}
+            http_options_obj = config.get("http_options")
+            http_options = (
+                {str(key): value for key, value in http_options_obj.items()}
+                if isinstance(http_options_obj, Mapping)
+                else {}
+            )
+            headers_obj = http_options.get("headers")
+            headers = (
+                {str(key): value for key, value in headers_obj.items()} if isinstance(headers_obj, Mapping) else {}
+            )
+            headers.update(dict(spec.extra_headers))
+            http_options["headers"] = headers
+            config["http_options"] = http_options
+            request["config"] = config
+            included.append("extra_headers")
+
         # Deep-merge extra_body into config.
         if spec.extra_body:
             config_obj = request.get("config")
             config = {str(key): value for key, value in config_obj.items()} if isinstance(config_obj, Mapping) else {}
             request["config"] = _deep_merge(config, spec.extra_body)
 
-        if spec.extra_headers:
-            excluded.append(
-                ExcludedItem(
-                    description="extra_headers",
-                    reason="Google generate_content does not accept per-request extra headers in this adapter",
-                )
-            )
         if spec.extra_query:
             excluded.append(
                 ExcludedItem(

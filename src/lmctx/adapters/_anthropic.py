@@ -129,7 +129,7 @@ def _file_block_to_anthropic(part: Part, store: BlobStore) -> dict[str, object] 
     return block
 
 
-def _parts_to_content(  # noqa: C901, PLR0912
+def _parts_to_content(
     parts: tuple[Part, ...], role: str, store: BlobStore
 ) -> tuple[list[dict[str, object]], tuple[tuple[int, str], ...]]:
     """Convert lmctx Parts to Anthropic content blocks."""
@@ -397,7 +397,7 @@ class AnthropicMessagesAdapter:
         """Return capability metadata for this adapter."""
         return _CAPABILITIES
 
-    def plan(self, ctx: Context, spec: RunSpec) -> RequestPlan:  # noqa: C901
+    def plan(self, ctx: Context, spec: RunSpec) -> RequestPlan:
         """Build an Anthropic Messages API request from Context and RunSpec."""
         _validate_adapter_spec(self.id, spec)
         included: list[str] = []
@@ -461,7 +461,7 @@ class AnthropicMessagesAdapter:
             extra=_plan_extra_hints(spec),
         )
 
-    def ingest(self, ctx: Context, response: object | dict[str, object], *, spec: RunSpec) -> Context:  # noqa: C901, PLR0912
+    def ingest(self, ctx: Context, response: object | dict[str, object], *, spec: RunSpec) -> Context:
         """Parse an Anthropic Messages API response into the Context."""
         _validate_adapter_spec(self.id, spec)
         data = _to_dict(response)

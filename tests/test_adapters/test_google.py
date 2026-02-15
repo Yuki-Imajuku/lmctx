@@ -230,13 +230,63 @@ def test_plan_extra_body_deep_merge() -> None:
     assert tool_config["allowed_function_names"] == ["search"]
 
 
-def test_plan_transport_overrides_reported_as_excluded() -> None:
+def test_plan_extra_headers_and_extra_body_http_options_deep_merge() -> None:
     adapter = GoogleGenAIAdapter()
     ctx = Context().user("Hello")
-    spec = _spec(extra_headers={"X-Test": "1"}, extra_query={"api-version": "2025-01-01"})
+    spec = _spec(
+        extra_headers={"X-Trace-Id": "trace-1"},
+        extra_body={"http_options": {"timeout": 30}},
+    )
     plan = adapter.plan(ctx, spec)
 
-    assert any(item.description == "extra_headers" for item in plan.excluded)
+    http_options = plan.request["config"]["http_options"]
+    assert http_options["headers"] == {"X-Trace-Id": "trace-1"}
+    assert http_options["timeout"] == 30
+
+
+def test_plan_extra_headers_and_extra_body_http_options_headers_deep_merge() -> None:
+    adapter = GoogleGenAIAdapter()
+    ctx = Context().user("Hello")
+    spec = _spec(
+        extra_headers={"X-A": "1"},
+        extra_body={"http_options": {"headers": {"X-B": "2"}}},
+    )
+    plan = adapter.plan(ctx, spec)
+
+    http_options = plan.request["config"]["http_options"]
+    assert http_options["headers"] == {"X-A": "1", "X-B": "2"}
+
+
+def test_plan_extra_body_headers_override_extra_headers_on_conflict() -> None:
+    """When both sources set the same header key, extra_body wins (more explicit)."""
+    adapter = GoogleGenAIAdapter()
+    ctx = Context().user("Hello")
+    spec = _spec(
+        extra_headers={"X-A": "1"},
+        extra_body={"http_options": {"headers": {"X-A": "2"}}},
+    )
+    plan = adapter.plan(ctx, spec)
+
+    http_options = plan.request["config"]["http_options"]
+    assert http_options["headers"] == {"X-A": "2"}
+
+
+def test_plan_extra_headers_mapped_to_http_options_headers() -> None:
+    adapter = GoogleGenAIAdapter()
+    ctx = Context().user("Hello")
+    spec = _spec(extra_headers={"X-Test": "1"})
+    plan = adapter.plan(ctx, spec)
+
+    assert plan.request["config"]["http_options"]["headers"] == {"X-Test": "1"}
+    assert "extra_headers" in plan.included
+
+
+def test_plan_extra_query_reported_as_excluded() -> None:
+    adapter = GoogleGenAIAdapter()
+    ctx = Context().user("Hello")
+    spec = _spec(extra_query={"api-version": "2025-01-01"})
+    plan = adapter.plan(ctx, spec)
+
     assert any(item.description == "extra_query" for item in plan.excluded)
 
 

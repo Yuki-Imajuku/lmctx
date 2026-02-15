@@ -72,7 +72,7 @@ def _default_file_name(part: Part) -> str:
     return "upload.bin"
 
 
-def _file_input_from_part(part: Part, store: BlobStore) -> dict[str, object] | None:  # noqa: C901
+def _file_input_from_part(part: Part, store: BlobStore) -> dict[str, object] | None:
     """Convert ``Part(type='file')`` to a Responses API ``input_file`` item."""
     raw = _as_str_object_dict(part.provider_raw)
     file_id = part.text if isinstance(part.text, str) and part.text else None
@@ -329,7 +329,7 @@ def _user_to_responses(msg: Message, store: BlobStore) -> dict[str, object]:
     return {"role": "user", "content": content}
 
 
-def _assistant_to_responses(msg: Message, store: BlobStore) -> list[dict[str, object]]:  # noqa: C901, PLR0912
+def _assistant_to_responses(msg: Message, store: BlobStore) -> list[dict[str, object]]:
     """Convert an assistant message to Responses API input items.
 
     Text parts become a message item; tool calls become function_call items.
@@ -427,7 +427,7 @@ def _message_to_responses(msg: Message, store: BlobStore) -> list[dict[str, obje
     return []
 
 
-def _validate_input_item(item: dict[str, object]) -> str | None:  # noqa: C901, PLR0911, PLR0912
+def _validate_input_item(item: dict[str, object]) -> str | None:
     """Validate a converted Responses API input item."""
     item_type = item.get("type")
     if isinstance(item_type, str):
@@ -482,9 +482,7 @@ def _validate_input_item(item: dict[str, object]) -> str | None:  # noqa: C901, 
     return "input item is missing role or type"
 
 
-def _part_exclusion_reason_for_role(  # noqa: C901, PLR0911, PLR0912
-    part: Part, role: str, store: BlobStore
-) -> str | None:
+def _part_exclusion_reason_for_role(part: Part, role: str, store: BlobStore) -> str | None:
     """Return a reason when a part cannot be serialized for the given role."""
     if role == "user":
         if part.type == "text":

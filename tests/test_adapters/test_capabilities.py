@@ -61,11 +61,11 @@ class _CapabilityAdapter(Protocol):
         ),
         (
             GoogleGenAIAdapter(),
-            {"seed": "yes", "extra_headers": "no", "response_modalities": "yes"},
+            {"seed": "yes", "extra_headers": "yes", "response_modalities": "yes"},
         ),
         (
             BedrockConverseAdapter(),
-            {"tool_choice": "no", "extra_query": "no", "response_schema": "yes"},
+            {"tool_choice": "partial", "extra_query": "no", "response_schema": "yes"},
         ),
     ],
 )
