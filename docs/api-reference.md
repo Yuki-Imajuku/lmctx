@@ -66,6 +66,8 @@ Query/helper methods:
 
 - `last(*, role=None) -> Message | None`
 - `clone() -> Context`
+- `to_dict(*, include_blob_payloads=False) -> dict[str, object]`
+- `from_dict(value, *, blob_store=None) -> Context` (classmethod)
 - `pipe(func, *args, **kwargs) -> Any`
 - `__len__() -> int`
 - `__iter__() -> Iterator[Message]`
@@ -144,6 +146,11 @@ class Instructions:
     developer: str | None = None
 ```
 
+Helpers:
+
+- `to_dict() -> dict[str, object]`
+- `from_dict(value) -> Instructions` (classmethod)
+
 ```python
 @dataclass(frozen=True, slots=True)
 class RunSpec:
@@ -166,6 +173,11 @@ class RunSpec:
     base_url: str | None = None
 ```
 
+Helpers:
+
+- `to_dict() -> dict[str, object]`
+- `from_dict(value) -> RunSpec` (classmethod)
+
 ### `RequestPlan`
 
 ```python
@@ -182,6 +194,11 @@ class RequestPlan:
 ```
 
 `request` is the payload you pass to SDK calls. `extra` carries non-request hints such as `base_url`.
+
+Helpers:
+
+- `to_dict() -> dict[str, object]`
+- `from_dict(value) -> RequestPlan` (classmethod)
 
 Validation helpers:
 

@@ -35,6 +35,31 @@ def _to_plain_dict(value: Mapping[str, Any] | dict[str, Any]) -> dict[str, Any]:
     return {str(key): _to_plain_data(item) for key, item in value.items()}
 
 
+def _as_str_object_dict(value: object, *, field_name: str) -> dict[str, object]:
+    """Validate and normalize a mapping value into ``dict[str, object]``."""
+    if not isinstance(value, Mapping):
+        msg = f"{field_name} must be a mapping."
+        raise TypeError(msg)
+    return {str(key): item for key, item in value.items()}
+
+
+def _string_tuple_from_value(value: object, *, field_name: str) -> tuple[str, ...]:
+    """Validate and normalize a sequence of strings."""
+    if value is None:
+        return ()
+    if not isinstance(value, list | tuple):
+        msg = f"{field_name} must be a sequence of strings."
+        raise TypeError(msg)
+
+    normalized: list[str] = []
+    for index, item in enumerate(value):
+        if not isinstance(item, str):
+            msg = f"{field_name}[{index}] must be a string."
+            raise TypeError(msg)
+        normalized.append(item)
+    return tuple(normalized)
+
+
 def _excluded_to_warning(item: ExcludedItem) -> str:
     """Format one excluded item as an unused-parameter warning."""
     return f"unused parameter '{item.description}': {item.reason}"
@@ -48,6 +73,31 @@ class AdapterId:
     endpoint: str
     api_version: str | None = None
 
+    def to_dict(self) -> dict[str, object]:
+        """Serialize AdapterId to a plain dictionary."""
+        return {
+            "provider": self.provider,
+            "endpoint": self.endpoint,
+            "api_version": self.api_version,
+        }
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, object]) -> AdapterId:
+        """Deserialize AdapterId from a plain dictionary."""
+        provider = value.get("provider")
+        if not isinstance(provider, str) or not provider:
+            msg = "AdapterId.provider must be a non-empty string."
+            raise TypeError(msg)
+        endpoint = value.get("endpoint")
+        if not isinstance(endpoint, str) or not endpoint:
+            msg = "AdapterId.endpoint must be a non-empty string."
+            raise TypeError(msg)
+        api_version = value.get("api_version")
+        if api_version is not None and not isinstance(api_version, str):
+            msg = "AdapterId.api_version must be a string or None."
+            raise TypeError(msg)
+        return cls(provider=provider, endpoint=endpoint, api_version=api_version)
+
 
 @dataclass(frozen=True, slots=True)
 class ExcludedItem:
@@ -55,6 +105,26 @@ class ExcludedItem:
 
     description: str
     reason: str
+
+    def to_dict(self) -> dict[str, object]:
+        """Serialize ExcludedItem to a plain dictionary."""
+        return {
+            "description": self.description,
+            "reason": self.reason,
+        }
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, object]) -> ExcludedItem:
+        """Deserialize ExcludedItem from a plain dictionary."""
+        description = value.get("description")
+        if not isinstance(description, str) or not description:
+            msg = "ExcludedItem.description must be a non-empty string."
+            raise TypeError(msg)
+        reason = value.get("reason")
+        if not isinstance(reason, str):
+            msg = "ExcludedItem.reason must be a string."
+            raise TypeError(msg)
+        return cls(description=description, reason=reason)
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,6 +186,57 @@ class RequestPlan:
             joined = "\n- ".join(violations)
             msg = f"RequestPlan validation failed:\n- {joined}"
             raise PlanValidationError(msg)
+
+    def to_dict(self) -> dict[str, object]:
+        """Serialize RequestPlan to a plain dictionary."""
+        return {
+            "request": _to_plain_dict(self.request),
+            "included": list(self.included),
+            "excluded": [item.to_dict() for item in self.excluded],
+            "must_roundtrip": list(self.must_roundtrip),
+            "warnings": list(self.warnings),
+            "errors": list(self.errors),
+            "token_estimate": self.token_estimate,
+            "extra": _to_plain_dict(self.extra),
+        }
+
+    @classmethod
+    def from_dict(cls, value: Mapping[str, object]) -> RequestPlan:
+        """Deserialize RequestPlan from a plain dictionary."""
+        request = _as_str_object_dict(value.get("request"), field_name="RequestPlan.request")
+        extra_raw = value.get("extra", {})
+        extra = _as_str_object_dict(extra_raw, field_name="RequestPlan.extra")
+
+        excluded_raw = value.get("excluded", ())
+        if not isinstance(excluded_raw, list | tuple):
+            msg = "RequestPlan.excluded must be a sequence."
+            raise TypeError(msg)
+        excluded: list[ExcludedItem] = []
+        for index, excluded_value in enumerate(excluded_raw):
+            excluded_item_data = _as_str_object_dict(
+                excluded_value,
+                field_name=f"RequestPlan.excluded[{index}]",
+            )
+            excluded.append(ExcludedItem.from_dict(excluded_item_data))
+
+        token_estimate = value.get("token_estimate")
+        if token_estimate is not None and not isinstance(token_estimate, int):
+            msg = "RequestPlan.token_estimate must be an int or None."
+            raise TypeError(msg)
+
+        return cls(
+            request={str(key): _to_plain_data(item) for key, item in request.items()},
+            included=_string_tuple_from_value(value.get("included"), field_name="RequestPlan.included"),
+            excluded=tuple(excluded),
+            must_roundtrip=_string_tuple_from_value(
+                value.get("must_roundtrip"),
+                field_name="RequestPlan.must_roundtrip",
+            ),
+            warnings=_string_tuple_from_value(value.get("warnings"), field_name="RequestPlan.warnings"),
+            errors=_string_tuple_from_value(value.get("errors"), field_name="RequestPlan.errors"),
+            token_estimate=token_estimate,
+            extra={str(key): _to_plain_data(item) for key, item in extra.items()},
+        )
 
 
 @runtime_checkable
