@@ -3,7 +3,7 @@ from types import MappingProxyType
 import pytest
 
 from lmctx.errors import PlanValidationError
-from lmctx.plan import AdapterId, ExcludedItem, LmctxAdapter, RequestPlan
+from lmctx.plan import AdapterCapabilities, AdapterId, ExcludedItem, LmctxAdapter, RequestPlan
 
 
 def test_adapter_id_defaults() -> None:
@@ -16,6 +16,39 @@ def test_adapter_id_defaults() -> None:
 def test_adapter_id_with_version() -> None:
     aid = AdapterId(provider="azure", endpoint="chat.completions", api_version="2024-02-01")
     assert aid.api_version == "2024-02-01"
+
+
+def test_adapter_capabilities_valid_payload() -> None:
+    capabilities = AdapterCapabilities(
+        id=AdapterId(provider="openai", endpoint="chat.completions"),
+        fields={"tools": "yes", "seed": "partial", "cursor_chaining": "no"},
+        notes={"seed": "Only some models expose deterministic seed support."},
+    )
+
+    assert capabilities.level("tools") == "yes"
+    assert capabilities.level("seed") == "partial"
+    assert capabilities.level("unknown") is None
+    assert capabilities.is_supported("tools")
+    assert capabilities.is_supported("seed")
+    assert not capabilities.is_supported("seed", allow_partial=False)
+    assert not capabilities.is_supported("cursor_chaining")
+
+
+def test_adapter_capabilities_rejects_invalid_level() -> None:
+    with pytest.raises(ValueError, match="Invalid capability level"):
+        AdapterCapabilities(
+            id=AdapterId(provider="openai", endpoint="chat.completions"),
+            fields={"tools": "maybe"},
+        )
+
+
+def test_adapter_capabilities_rejects_unknown_note_keys() -> None:
+    with pytest.raises(ValueError, match="unknown field keys"):
+        AdapterCapabilities(
+            id=AdapterId(provider="openai", endpoint="chat.completions"),
+            fields={"tools": "yes"},
+            notes={"seed": "not part of fields map"},
+        )
 
 
 def test_excluded_item() -> None:
@@ -63,6 +96,7 @@ def test_request_plan_normalizes_nested_mappings() -> None:
 def test_lmctx_adapter_is_runtime_checkable() -> None:
     assert isinstance(LmctxAdapter, type)
     # Protocol itself should be checkable
+    assert hasattr(LmctxAdapter, "capabilities")
     assert hasattr(LmctxAdapter, "plan")
     assert hasattr(LmctxAdapter, "ingest")
 

@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
 
     from lmctx.context import Context
-    from lmctx.plan import AdapterId, LmctxAdapter, RequestPlan
+    from lmctx.plan import AdapterCapabilities, AdapterId, LmctxAdapter, RequestPlan
     from lmctx.spec import RunSpec
 
 
@@ -112,8 +112,20 @@ class AutoAdapter:
         adapter = self.resolve(spec)
         return adapter.ingest(ctx, response, spec=spec)
 
+    def capabilities(self, spec: RunSpec) -> AdapterCapabilities:
+        """Return capability metadata from the adapter selected for RunSpec."""
+        adapter = self.resolve(spec)
+        return adapter.capabilities()
+
     def available_ids(self) -> tuple[AdapterId, ...]:
         """Return all registered adapter IDs."""
         return tuple(
             adapter.id for _, adapter in sorted(self._adapters.items(), key=lambda item: _adapter_sort_key(item[0]))
+        )
+
+    def available_capabilities(self) -> tuple[AdapterCapabilities, ...]:
+        """Return capabilities for all registered adapters."""
+        return tuple(
+            adapter.capabilities()
+            for _, adapter in sorted(self._adapters.items(), key=lambda item: _adapter_sort_key(item[0]))
         )

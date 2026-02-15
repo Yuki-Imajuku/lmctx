@@ -30,7 +30,7 @@ from lmctx.adapters._util import (
     _validate_adapter_spec,
 )
 from lmctx.errors import BlobIntegrityError, BlobNotFoundError
-from lmctx.plan import AdapterId, ExcludedItem, RequestPlan
+from lmctx.plan import AdapterCapabilities, AdapterId, ExcludedItem, RequestPlan
 from lmctx.types import Cursor, Message, Part, Usage
 
 if TYPE_CHECKING:
@@ -790,6 +790,52 @@ def _apply_transport_overrides(request: dict[str, object], spec: RunSpec, includ
         included.append("extra_query")
 
 
+_RESPONSES_CAPABILITIES = AdapterCapabilities(
+    id=AdapterId(provider="openai", endpoint="responses.create"),
+    fields={
+        "instructions": "yes",
+        "max_output_tokens": "yes",
+        "temperature": "yes",
+        "top_p": "yes",
+        "seed": "no",
+        "tools": "yes",
+        "tool_choice": "yes",
+        "response_schema": "yes",
+        "response_modalities": "yes",
+        "extra_body": "yes",
+        "extra_headers": "yes",
+        "extra_query": "yes",
+        "cursor_chaining": "yes",
+    },
+    notes={
+        "seed": "responses.create does not support deterministic sampling seed.",
+        "cursor_chaining": "Uses Context.cursor.last_response_id as previous_response_id.",
+    },
+)
+
+_RESPONSES_COMPACT_CAPABILITIES = AdapterCapabilities(
+    id=AdapterId(provider="openai", endpoint="responses.compact"),
+    fields={
+        "instructions": "yes",
+        "max_output_tokens": "no",
+        "temperature": "no",
+        "top_p": "no",
+        "seed": "no",
+        "tools": "no",
+        "tool_choice": "no",
+        "response_schema": "no",
+        "response_modalities": "no",
+        "extra_body": "yes",
+        "extra_headers": "yes",
+        "extra_query": "yes",
+        "cursor_chaining": "yes",
+    },
+    notes={
+        "cursor_chaining": "Uses Context.cursor.last_response_id as previous_response_id.",
+    },
+)
+
+
 class OpenAIResponsesAdapter:
     """Adapter for the OpenAI Responses API.
 
@@ -803,6 +849,10 @@ class OpenAIResponsesAdapter:
     """
 
     id = AdapterId(provider="openai", endpoint="responses.create")
+
+    def capabilities(self) -> AdapterCapabilities:
+        """Return capability metadata for this adapter."""
+        return _RESPONSES_CAPABILITIES
 
     def plan(self, ctx: Context, spec: RunSpec) -> RequestPlan:
         """Build an OpenAI Responses API request from Context and RunSpec."""
@@ -974,6 +1024,10 @@ class OpenAIResponsesCompactAdapter:
     """Adapter for the OpenAI Responses Compact API (``responses.compact``)."""
 
     id = AdapterId(provider="openai", endpoint="responses.compact")
+
+    def capabilities(self) -> AdapterCapabilities:
+        """Return capability metadata for this adapter."""
+        return _RESPONSES_COMPACT_CAPABILITIES
 
     def plan(self, ctx: Context, spec: RunSpec) -> RequestPlan:
         """Build an OpenAI Responses Compact request from Context and RunSpec."""

@@ -13,7 +13,7 @@ from lmctx.adapters import OpenAIResponsesAdapter
 
 ### Root exports (`from lmctx import ...`)
 
-- `AdapterId`, `ExcludedItem`, `RequestPlan`, `LmctxAdapter`
+- `AdapterId`, `CapabilityLevel`, `AdapterCapabilities`, `ExcludedItem`, `RequestPlan`, `LmctxAdapter`
 - `AutoAdapter`
 - `Context`
 - `Part`, `Message`, `Role`, `Cursor`, `Usage`, `ToolSpecification`
@@ -189,11 +189,27 @@ Validation helpers:
 - `warning_messages(include_unused_parameters=True) -> tuple[str, ...]`
 - `assert_valid(*, fail_on_warnings=False, fail_on_excluded=False) -> None`
 
+### `AdapterCapabilities`
+
+```python
+CapabilityLevel = Literal["yes", "partial", "no"]
+
+@dataclass(frozen=True, slots=True)
+class AdapterCapabilities:
+    id: AdapterId
+    fields: Mapping[str, CapabilityLevel]
+    notes: Mapping[str, str] = MappingProxyType({})
+```
+
+- `level(field_name) -> CapabilityLevel | None`
+- `is_supported(field_name, *, allow_partial=True) -> bool`
+
 ### Adapter protocol
 
 ```python
 class LmctxAdapter(Protocol):
     id: AdapterId
+    def capabilities(self) -> AdapterCapabilities: ...
     def plan(self, ctx: Context, spec: RunSpec) -> RequestPlan: ...
     def ingest(self, ctx: Context, response: object, *, spec: RunSpec) -> Context: ...
 ```
@@ -204,9 +220,11 @@ class LmctxAdapter(Protocol):
 
 - `plan(ctx, spec) -> RequestPlan`
 - `ingest(ctx, response, *, spec) -> Context`
+- `capabilities(spec) -> AdapterCapabilities`
 - `resolve(spec) -> LmctxAdapter`
 - `register(adapter, *, replace=False) -> None`
 - `available_ids() -> tuple[AdapterId, ...]`
+- `available_capabilities() -> tuple[AdapterCapabilities, ...]`
 
 ## Errors
 
