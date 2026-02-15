@@ -145,6 +145,29 @@ ignore = [
     "ANN401",  # Any is needed for provider response/payload types
     "ARG002",  # spec is part of Protocol but not always used in ingest
 ]
+"src/lmctx/adapters/_anthropic.py" = [
+    "C901",     # adapter translation functions are intentionally branchy
+    "PLR0912",  # adapter translation functions are intentionally branchy
+]
+"src/lmctx/adapters/_bedrock.py" = [
+    "C901",     # adapter translation functions are intentionally branchy
+    "PLR0912",  # adapter translation functions are intentionally branchy
+]
+"src/lmctx/adapters/_google.py" = [
+    "C901",     # adapter translation functions are intentionally branchy
+    "PLR0911",  # early returns keep conversion logic explicit
+    "PLR0912",  # adapter translation functions are intentionally branchy
+]
+"src/lmctx/adapters/_openai_chat.py" = [
+    "C901",     # adapter translation functions are intentionally branchy
+    "PLR0911",  # early returns keep conversion logic explicit
+    "PLR0912",  # adapter translation functions are intentionally branchy
+]
+"src/lmctx/adapters/_openai_responses.py" = [
+    "C901",     # adapter translation functions are intentionally branchy
+    "PLR0911",  # early returns keep conversion logic explicit
+    "PLR0912",  # adapter translation functions are intentionally branchy
+]
 "tests/**/*.py" = [
     "S101",    # assert is expected in tests
     "SLF001",  # private member access for testing internals

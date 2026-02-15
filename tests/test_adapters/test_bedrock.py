@@ -125,6 +125,82 @@ def test_plan_with_tools() -> None:
     assert tools[0]["toolSpec"]["inputSchema"]["json"] == tool.input_schema
 
 
+@pytest.mark.parametrize(
+    ("tool_choice", "expected"),
+    [
+        pytest.param("auto", {"auto": {}}, id="string-auto"),
+        pytest.param("required", {"any": {}}, id="string-required"),
+        pytest.param({"type": "auto"}, {"auto": {}}, id="openai-style-auto"),
+        pytest.param(
+            {"type": "function", "function": {"name": "get_weather"}},
+            {"tool": {"name": "get_weather"}},
+            id="openai-style-function",
+        ),
+        pytest.param({"tool": {"name": "get_weather"}}, {"tool": {"name": "get_weather"}}, id="bedrock-native-tool"),
+    ],
+)
+def test_plan_tool_choice_mapped_to_tool_config(tool_choice: object, expected: dict[str, object]) -> None:
+    adapter = BedrockConverseAdapter()
+    ctx = Context().user("What's the weather?")
+    tool = ToolSpecification(
+        name="get_weather",
+        description="Get weather info",
+        input_schema={"type": "object", "properties": {"city": {"type": "string"}}},
+    )
+    spec = _spec(tools=(tool,), tool_choice=tool_choice)
+    plan = adapter.plan(ctx, spec)
+
+    assert plan.request["toolConfig"]["toolChoice"] == expected
+    assert "tool_choice" in plan.included
+
+
+def test_plan_tool_choice_name_shortcut_maps_to_tool_choice_tool() -> None:
+    adapter = BedrockConverseAdapter()
+    ctx = Context().user("What's the weather?")
+    tool = ToolSpecification(
+        name="get_weather",
+        description="Get weather info",
+        input_schema={"type": "object", "properties": {"city": {"type": "string"}}},
+    )
+    spec = _spec(tools=(tool,), tool_choice={"name": "get_weather"})
+    plan = adapter.plan(ctx, spec)
+
+    assert plan.request["toolConfig"]["toolChoice"] == {"tool": {"name": "get_weather"}}
+    assert "tool_choice" in plan.included
+
+
+def test_plan_tool_choice_none_reported_as_excluded() -> None:
+    adapter = BedrockConverseAdapter()
+    ctx = Context().user("Hello")
+    spec = _spec(tool_choice="none")
+    plan = adapter.plan(ctx, spec)
+
+    assert any(item.description == "tool_choice" for item in plan.excluded)
+
+
+@pytest.mark.parametrize(
+    ("tool_choice", "reason_fragment"),
+    [
+        pytest.param("manual", "unsupported string tool_choice value", id="unsupported-string"),
+        pytest.param(
+            {"type": "function", "function": {}},
+            "requires function.name",
+            id="function-missing-name",
+        ),
+        pytest.param({"mode": "auto"}, "format is not recognized", id="unknown-mapping-shape"),
+        pytest.param(123, "must be a string or mapping", id="non-mapping"),
+    ],
+)
+def test_plan_invalid_tool_choice_reported_as_excluded(tool_choice: object, reason_fragment: str) -> None:
+    adapter = BedrockConverseAdapter()
+    ctx = Context().user("Hello")
+    spec = _spec(tool_choice=tool_choice)
+    plan = adapter.plan(ctx, spec)
+
+    excluded_item = next(item for item in plan.excluded if item.description == "tool_choice")
+    assert reason_fragment in excluded_item.reason
+
+
 def test_plan_with_response_schema() -> None:
     adapter = BedrockConverseAdapter()
     ctx = Context().user("Return JSON.")

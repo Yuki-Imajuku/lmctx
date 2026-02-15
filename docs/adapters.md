@@ -66,11 +66,12 @@ Legend:
 | `temperature`, `top_p` | yes | no | yes | no | yes | yes | yes |
 | `seed` | no | no | yes | no | no | yes | no |
 | `tools` | yes | no | yes | no | yes | yes | yes |
-| `tool_choice` | yes | no | yes | no | yes | yes (`config.tool_config`) | no |
+| `tool_choice` | yes | no | yes | no | yes | yes (`config.tool_config`) | partial (`toolConfig.toolChoice`) |
 | `response_schema` | yes (`text.format`) | no | yes (`response_format`) | no | yes (`output_config.format`) | yes (`response_schema` + JSON mime type) | yes (`outputConfig.textFormat.structure.jsonSchema`) |
 | `response_modalities` | yes (`modalities`) | no | yes (`modalities`) | partial (DALL-E `response_format` only) | no | yes (`config.response_modalities`) | no |
 | `extra_body` | yes (deep merge request) | yes (deep merge request) | yes (deep merge request) | yes (deep merge request) | yes (deep merge request) | yes (deep merge `config`) | yes (deep merge request) |
-| `extra_headers` / `extra_query` | yes | yes | yes | yes | yes | no | no |
+| `extra_headers` | yes | yes | yes | yes | yes | yes (`config.http_options.headers`) | no |
+| `extra_query` | yes | yes | yes | yes | yes | no | no |
 | `base_url` | surfaced in `RequestPlan.extra` | surfaced in `RequestPlan.extra` | surfaced in `RequestPlan.extra` | surfaced in `RequestPlan.extra` | surfaced in `RequestPlan.extra` | surfaced in `RequestPlan.extra` | surfaced in `RequestPlan.extra` |
 | Cursor chaining (`Context.cursor`) | yes (`previous_response_id`) | yes (`previous_response_id`) | no | no | no | no | no |
 
@@ -115,12 +116,15 @@ Legend:
 - Assistant role maps to `model`, tool role maps to `user`
 - Tool calls/responses map to `function_call` / `function_response`
 - `extra_body` merges into `config` (not request root)
+- `extra_headers` maps to `config.http_options.headers`
+- `extra_query` is not mapped by this adapter
 - Reads usage metadata from snake_case and camelCase payload variants
 
 ### Bedrock Converse
 
 - Uses Bedrock camelCase structure (`modelId`, `inferenceConfig`, `toolConfig`)
 - System/developer text goes into top-level `system` blocks
+- `tool_choice` maps to `toolConfig.toolChoice` (model-family dependent)
 - Structured output maps to `outputConfig.textFormat`
 - Transport overrides (`extra_headers`, `extra_query`) are intentionally not mapped
 

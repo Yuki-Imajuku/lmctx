@@ -95,7 +95,56 @@ def _convert_tool_output(output: object) -> str:
     return json.dumps(_to_json_compatible(output), ensure_ascii=False)
 
 
-def _parts_to_bedrock(  # noqa: C901, PLR0912
+def _normalize_tool_choice_string(tool_choice: str) -> tuple[dict[str, object] | None, str | None]:
+    """Normalize string tool_choice modes to Bedrock toolChoice objects."""
+    mode = tool_choice.strip().lower()
+    if mode == "auto":
+        return {"auto": {}}, None
+    if mode in {"required", "any"}:
+        return {"any": {}}, None
+    if mode == "none":
+        return None, "Bedrock Converse toolChoice does not support 'none'."
+    return None, f"unsupported string tool_choice value: {tool_choice!r}"
+
+
+def _normalize_tool_choice_mapping(
+    tool_choice: Mapping[str, object],
+) -> tuple[dict[str, object] | None, str | None]:
+    """Normalize mapping tool_choice forms to Bedrock toolChoice objects."""
+    choice = {str(key): item for key, item in tool_choice.items()}
+
+    if any(key in choice for key in ("auto", "any", "tool")):
+        return _json_object(choice), None
+
+    raw_type = choice.get("type")
+    if isinstance(raw_type, str):
+        if raw_type.lower() == "function":
+            function_obj = _as_str_object_dict(choice.get("function"))
+            function_name = function_obj.get("name") if function_obj is not None else None
+            if isinstance(function_name, str) and function_name:
+                return {"tool": {"name": function_name}}, None
+            return None, "tool_choice type=function requires function.name."
+        return _normalize_tool_choice_string(raw_type)
+
+    function_name = choice.get("name")
+    if isinstance(function_name, str) and function_name:
+        return {"tool": {"name": function_name}}, None
+
+    return None, "tool_choice format is not recognized for Bedrock Converse."
+
+
+def _normalize_tool_choice(tool_choice: object) -> tuple[dict[str, object] | None, str | None]:
+    """Normalize RunSpec tool_choice into Bedrock ``toolConfig.toolChoice`` format."""
+    if isinstance(tool_choice, str):
+        return _normalize_tool_choice_string(tool_choice)
+
+    choice = _as_str_object_dict(tool_choice)
+    if choice is None:
+        return None, "tool_choice must be a string or mapping."
+    return _normalize_tool_choice_mapping(choice)
+
+
+def _parts_to_bedrock(
     parts: tuple[Part, ...], role: str, store: BlobStore
 ) -> tuple[list[dict[str, object]], tuple[tuple[int, str], ...]]:
     """Convert lmctx Parts to Bedrock content blocks."""
@@ -317,7 +366,7 @@ _CAPABILITIES = AdapterCapabilities(
         "top_p": "yes",
         "seed": "no",
         "tools": "yes",
-        "tool_choice": "no",
+        "tool_choice": "partial",
         "response_schema": "yes",
         "response_modalities": "no",
         "extra_body": "yes",
@@ -327,7 +376,9 @@ _CAPABILITIES = AdapterCapabilities(
     },
     notes={
         "seed": "Deterministic seed support is model-specific and not mapped.",
-        "tool_choice": "Converse tool-choice controls are not mapped in this adapter.",
+        "tool_choice": (
+            "Mapped to toolConfig.toolChoice. Supported by model family (for example Claude 3 and Amazon Nova)."
+        ),
         "response_modalities": "Output modality controls are model-specific and not mapped.",
         "extra_headers": "Per-request transport headers are not mapped in this adapter.",
         "extra_query": "Per-request query overrides are not mapped in this adapter.",
@@ -354,7 +405,7 @@ class BedrockConverseAdapter:
         """Return capability metadata for this adapter."""
         return _CAPABILITIES
 
-    def plan(self, ctx: Context, spec: RunSpec) -> RequestPlan:  # noqa: C901
+    def plan(self, ctx: Context, spec: RunSpec) -> RequestPlan:
         """Build an AWS Bedrock Converse request from Context and RunSpec."""
         _validate_adapter_spec(self.id, spec)
         included: list[str] = []
@@ -402,6 +453,26 @@ class BedrockConverseAdapter:
                 ],
             }
             included.append(f"{len(spec.tools)} tools")
+
+        if spec.tool_choice is not None:
+            normalized_choice, reason = _normalize_tool_choice(spec.tool_choice)
+            if normalized_choice is not None:
+                tool_config_obj = request.get("toolConfig")
+                tool_config = (
+                    {str(key): value for key, value in tool_config_obj.items()}
+                    if isinstance(tool_config_obj, Mapping)
+                    else {}
+                )
+                tool_config["toolChoice"] = normalized_choice
+                request["toolConfig"] = tool_config
+                included.append("tool_choice")
+            elif reason is not None:
+                excluded.append(
+                    ExcludedItem(
+                        description="tool_choice",
+                        reason=reason,
+                    )
+                )
 
         _apply_structured_output(request, spec, included)
 
