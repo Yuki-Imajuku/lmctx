@@ -23,3 +23,10 @@ body:
       label: Relevant file/path
       description: For example `README.md` or `docs/adapters.md`.
       placeholder: "docs/..."
+  - type: checkboxes
+    id: pre-submit
+    attributes:
+      label: Pre-submit checks
+      description: Help us avoid duplicates by checking existing issues first.
+      options:
+        - label: I searched existing issues and did not find a duplicate

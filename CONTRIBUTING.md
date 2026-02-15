@@ -299,7 +299,7 @@ Use descriptive branch names in lowercase kebab-case.
 - Format: `<type>/<topic>`
 - Types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`
 - Topic: short, specific, and implementation-oriented
-- For Codex-created branches, prepend `codex/` (for example `codex/feat/new-feature`).
+- For Codex created branches, prepend `codex/` (for example `codex/feat/new-feature`).
 - For Claude Code created branches, prepend `claude/` (for example `claude/feat/new-feature`).
 - For other AI agent created branches, prepend `<agent-name>/` (for example `opencode/feat/new-feature`).
 
