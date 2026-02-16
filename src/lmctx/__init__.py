@@ -3,7 +3,7 @@
 import importlib.metadata as importlib_metadata
 
 from lmctx.adapters import AutoAdapter
-from lmctx.blobs import BlobReference, BlobStore, FileBlobStore, InMemoryBlobStore, put_file
+from lmctx.blobs import BlobEntry, BlobReference, BlobStore, FileBlobStore, InMemoryBlobStore, PruneReport, put_file
 from lmctx.context import Context
 from lmctx.errors import (
     BlobIntegrityError,
@@ -31,6 +31,7 @@ __all__ = [
     "AdapterCapabilities",
     "AdapterId",
     "AutoAdapter",
+    "BlobEntry",
     "BlobIntegrityError",
     "BlobNotFoundError",
     "BlobReference",
@@ -48,6 +49,7 @@ __all__ = [
     "Message",
     "Part",
     "PlanValidationError",
+    "PruneReport",
     "RequestPlan",
     "Role",
     "RunSpec",

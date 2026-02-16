@@ -217,7 +217,7 @@ def test_ingest_b64_image_response() -> None:
     assert len(last.parts) == 1
     assert last.parts[0].type == "image"
     assert last.parts[0].blob is not None
-    assert ctx2.blob_store.get(last.parts[0].blob) == b"hello"
+    assert ctx2.blob_store.get_blob(last.parts[0].blob) == b"hello"
 
 
 def test_ingest_url_image_response() -> None:

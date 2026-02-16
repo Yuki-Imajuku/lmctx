@@ -145,7 +145,7 @@ Adapter conversion and routing failures typically raise `ValueError` or `TypeErr
 Common ways to extend `lmctx`:
 
 1. Add a custom adapter implementing `LmctxAdapter` and register it in `AutoAdapter`.
-2. Add a custom blob backend implementing `BlobStore` (`put/get/contains`).
+2. Add a custom blob backend implementing `BlobStore` (`put_blob/get_blob/has_blob/delete_blob/list_blobs/prune_blobs`).
 3. Use `RunSpec.extra_body`, `extra_headers`, `extra_query` for provider features that are not first-class fields.
 
 This keeps the core stable while allowing provider-specific evolution.

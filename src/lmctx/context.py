@@ -5,7 +5,6 @@ from __future__ import annotations
 import base64
 import binascii
 import hashlib
-import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -36,47 +35,6 @@ def _normalize_content(content: str | Part | Sequence[Part]) -> tuple[Part, ...]
             raise TypeError(msg)
         parts.append(item)
     return tuple(parts)
-
-
-class _SerializedBlobStore:
-    """BlobStore used for Context.from_dict blob payload hydration."""
-
-    def __init__(self, blobs_by_id: Mapping[str, bytes]) -> None:
-        """Initialize with preloaded blob bytes keyed by BlobReference.id."""
-        self._blobs = {str(blob_id): data for blob_id, data in blobs_by_id.items()}
-
-    def put(
-        self,
-        data: bytes,
-        *,
-        media_type: str | None = None,
-        kind: str = "file",
-    ) -> BlobReference:
-        """Store bytes and return a BlobReference."""
-        digest = hashlib.sha256(data).hexdigest()
-        blob_id = uuid.uuid4().hex
-        self._blobs[blob_id] = data
-        return BlobReference(
-            id=blob_id,
-            sha256=digest,
-            media_type=media_type,
-            kind=kind,
-            size=len(data),
-        )
-
-    def get(self, ref: BlobReference) -> bytes:
-        """Retrieve bytes and verify SHA-256 integrity."""
-        data = self._blobs.get(ref.id)
-        if data is None:
-            raise BlobNotFoundError(ref.id)
-        actual = hashlib.sha256(data).hexdigest()
-        if actual != ref.sha256:
-            raise BlobIntegrityError(ref.id, ref.sha256, actual)
-        return data
-
-    def contains(self, ref: BlobReference) -> bool:
-        """Check whether a blob exists."""
-        return ref.id in self._blobs
 
 
 def _blob_ref_to_dict(ref: BlobReference) -> dict[str, object]:
@@ -333,7 +291,7 @@ def _serialize_blob_payloads(ctx: Context) -> list[dict[str, object]]:
     payloads: list[dict[str, object]] = []
     for ref in _collect_blob_references(ctx.messages):
         try:
-            data = ctx.blob_store.get(ref)
+            data = ctx.blob_store.get_blob(ref)
         except (BlobNotFoundError, BlobIntegrityError) as exc:
             msg = f"Cannot serialize blob payload for ref '{ref.id}': {exc}"
             raise ContextError(msg) from exc
@@ -352,7 +310,7 @@ def _deserialize_blob_store(value: object) -> BlobStore:
         msg = "Context.blob_payloads must be a sequence."
         raise TypeError(msg)
 
-    blobs_by_id: dict[str, bytes] = {}
+    entries_by_id: dict[str, tuple[BlobReference, bytes]] = {}
     for index, payload_value in enumerate(value):
         payload = as_str_object_dict(payload_value, field_name=f"Context.blob_payloads[{index}]")
         ref = _blob_ref_from_dict(payload.get("ref"), field_name=f"Context.blob_payloads[{index}].ref")
@@ -374,9 +332,9 @@ def _deserialize_blob_store(value: object) -> BlobStore:
                 f"expected {ref.sha256}, got {actual}"
             )
             raise ValueError(msg)
-        blobs_by_id[ref.id] = blob_bytes
+        entries_by_id[ref.id] = (ref, blob_bytes)
 
-    return _SerializedBlobStore(blobs_by_id)
+    return InMemoryBlobStore.from_preloaded(entries_by_id)
 
 
 @dataclass(frozen=True, slots=True)

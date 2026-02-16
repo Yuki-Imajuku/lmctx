@@ -136,7 +136,7 @@ def test_plan_multimodal_image() -> None:
     store = InMemoryBlobStore()
     ctx = Context(blob_store=store)
 
-    ref = store.put(b"fake-png-bytes", media_type="image/png", kind="image")
+    ref = store.put_blob(b"fake-png-bytes", media_type="image/png", kind="image")
     ctx = ctx.user(
         [
             Part(type="text", text="Describe this."),
@@ -170,7 +170,7 @@ def test_plan_with_file_blob_part() -> None:
     store = InMemoryBlobStore()
     ctx = Context(blob_store=store)
 
-    ref = store.put(b"%PDF-1.4 fake content", media_type="application/pdf", kind="document")
+    ref = store.put_blob(b"%PDF-1.4 fake content", media_type="application/pdf", kind="document")
     ctx = ctx.user([Part(type="file", blob=ref)])
 
     plan = adapter.plan(ctx, _spec())
@@ -457,7 +457,7 @@ def test_ingest_inline_image_response() -> None:
     assert last is not None
     assert last.parts[0].type == "image"
     assert last.parts[0].blob is not None
-    assert ctx2.blob_store.get(last.parts[0].blob) == b"hello"
+    assert ctx2.blob_store.get_blob(last.parts[0].blob) == b"hello"
 
 
 def test_ingest_inline_image_response_with_bytes_payload() -> None:
@@ -482,7 +482,7 @@ def test_ingest_inline_image_response_with_bytes_payload() -> None:
     assert last is not None
     assert last.parts[0].type == "image"
     assert last.parts[0].blob is not None
-    assert ctx2.blob_store.get(last.parts[0].blob) == b"\x89PNG\x0d\x0a"
+    assert ctx2.blob_store.get_blob(last.parts[0].blob) == b"\x89PNG\x0d\x0a"
 
 
 def test_ingest_inline_audio_response_maps_to_audio_part() -> None:
@@ -509,7 +509,7 @@ def test_ingest_inline_audio_response_maps_to_audio_part() -> None:
     assert last.parts[0].blob is not None
     assert last.parts[0].blob.kind == "audio"
     assert last.parts[0].blob.media_type == "audio/wav"
-    assert ctx2.blob_store.get(last.parts[0].blob) == b"hello"
+    assert ctx2.blob_store.get_blob(last.parts[0].blob) == b"hello"
 
 
 def test_ingest_function_call_response_camel_case() -> None:

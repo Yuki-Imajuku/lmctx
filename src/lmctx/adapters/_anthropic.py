@@ -70,7 +70,7 @@ def _sum_iteration_usage(usage_data: Mapping[str, object], field: str) -> int | 
 
 
 def _blob_to_base64(store: BlobStore, blob: BlobReference) -> str:
-    data = store.get(blob)
+    data = store.get_blob(blob)
     return base64.b64encode(data).decode("ascii")
 
 
@@ -192,7 +192,7 @@ def _parts_to_content(
             if part.provider_raw and part.provider_raw.get("type") == "compaction":
                 blocks.append(dict(part.provider_raw))
             elif part.blob:
-                raw_text = store.get(part.blob).decode("utf-8", errors="replace")
+                raw_text = store.get_blob(part.blob).decode("utf-8", errors="replace")
                 blocks.append({"type": "compaction", "content": raw_text})
             elif part.text:
                 blocks.append({"type": "compaction", "content": part.text})
@@ -508,7 +508,7 @@ class AnthropicMessagesAdapter:
                 if not isinstance(content, str):
                     content = block.get("encrypted_content")
                 if isinstance(content, str):
-                    blob = ctx.blob_store.put(
+                    blob = ctx.blob_store.put_blob(
                         content.encode("utf-8"),
                         media_type="application/octet-stream",
                         kind="compaction",

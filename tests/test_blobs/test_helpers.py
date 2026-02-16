@@ -12,7 +12,7 @@ def test_put_file_image(tmp_path: Path) -> None:
     ref = put_file(store, img)
     assert ref.media_type == "image/png"
     assert ref.kind == "image"
-    assert store.get(ref) == b"\x89PNG fake image data"
+    assert store.get_blob(ref) == b"\x89PNG fake image data"
 
 
 def test_put_file_audio(tmp_path: Path) -> None:
@@ -47,7 +47,7 @@ def test_put_file_accepts_str_path(tmp_path: Path) -> None:
     store = InMemoryBlobStore()
     ref = put_file(store, str(f))
     assert ref.media_type == "text/plain"
-    assert store.get(ref) == b"hello"
+    assert store.get_blob(ref) == b"hello"
 
 
 def test_put_file_with_file_blob_store(tmp_path: Path) -> None:
@@ -57,4 +57,4 @@ def test_put_file_with_file_blob_store(tmp_path: Path) -> None:
     ref = put_file(store, src)
     assert ref.media_type == "image/jpeg"
     assert ref.kind == "image"
-    assert store.get(ref) == b"\xff\xd8\xff fake jpeg"
+    assert store.get_blob(ref) == b"\xff\xd8\xff fake jpeg"

@@ -8,7 +8,7 @@ ctx = Context(blob_store=store)
 
 # Store an image in the BlobStore
 image_data = b"\x89PNG\r\n\x1a\n (fake image content)"
-ref = store.put(image_data, media_type="image/png", kind="image")
+ref = store.put_blob(image_data, media_type="image/png", kind="image")
 
 # .user() accepts str, a single Part, or a list of Parts
 ctx = ctx.user(
@@ -29,8 +29,8 @@ for i, part in enumerate(user_msg.parts):
     elif part.blob:
         print(f"  [{i}] type={part.type}, kind={part.blob.kind}, size={part.blob.size} bytes")
 
-# Retrieve the image bytes back (SHA-256 verified on every get)
+# Retrieve the image bytes back (SHA-256 verified on every get_blob call)
 blob = user_msg.parts[1].blob
 assert blob is not None
-retrieved = store.get(blob)
+retrieved = store.get_blob(blob)
 print(f"\nRetrieved {len(retrieved)} bytes, sha256={blob.sha256[:16]}...")

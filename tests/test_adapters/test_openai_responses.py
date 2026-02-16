@@ -150,7 +150,7 @@ def test_plan_multimodal_image() -> None:
     store = InMemoryBlobStore()
     ctx = Context(blob_store=store)
 
-    ref = store.put(b"fake-png-bytes", media_type="image/png", kind="image")
+    ref = store.put_blob(b"fake-png-bytes", media_type="image/png", kind="image")
     ctx = ctx.user(
         [
             Part(type="text", text="Describe this."),
@@ -199,7 +199,7 @@ def test_plan_with_file_blob_part() -> None:
     store = InMemoryBlobStore()
     ctx = Context(blob_store=store)
 
-    ref = store.put(b"%PDF-1.4 fake content", media_type="application/pdf", kind="document")
+    ref = store.put_blob(b"%PDF-1.4 fake content", media_type="application/pdf", kind="document")
     ctx = ctx.user([Part(type="file", blob=ref)])
 
     plan = adapter.plan(ctx, _spec())
@@ -554,7 +554,7 @@ def test_plan_compaction_item_from_text_fallback() -> None:
 def test_plan_compaction_item_from_blob() -> None:
     adapter = OpenAIResponsesAdapter()
     store = InMemoryBlobStore()
-    ref = store.put(b"encrypted-from-blob", media_type="text/plain", kind="compaction")
+    ref = store.put_blob(b"encrypted-from-blob", media_type="text/plain", kind="compaction")
     ctx = Context(blob_store=store).user("Hello")
     ctx = ctx.append(
         Message(
@@ -573,7 +573,7 @@ def test_plan_compaction_item_from_blob() -> None:
 def test_plan_excludes_non_utf8_compaction_blob() -> None:
     adapter = OpenAIResponsesAdapter()
     store = InMemoryBlobStore()
-    ref = store.put(b"\xff\xfe", media_type="application/octet-stream", kind="compaction")
+    ref = store.put_blob(b"\xff\xfe", media_type="application/octet-stream", kind="compaction")
     ctx = Context(blob_store=store).user("Hello")
     ctx = ctx.append(
         Message(
@@ -917,7 +917,7 @@ def test_ingest_message_output_image_block() -> None:
     assert len(last.parts) == 1
     assert last.parts[0].type == "image"
     assert last.parts[0].blob is not None
-    assert ctx2.blob_store.get(last.parts[0].blob) == b"hello"
+    assert ctx2.blob_store.get_blob(last.parts[0].blob) == b"hello"
 
 
 def test_ingest_image_generation_call_item() -> None:
@@ -947,7 +947,7 @@ def test_ingest_image_generation_call_item() -> None:
         "media_type": "image/png",
     }
     assert last.parts[0].blob is not None
-    assert ctx2.blob_store.get(last.parts[0].blob) == b"hello"
+    assert ctx2.blob_store.get_blob(last.parts[0].blob) == b"hello"
 
 
 def test_ingest_reasoning_item() -> None:
@@ -1092,7 +1092,7 @@ def test_ingest_compaction_item() -> None:
     assert last.parts[0].type == "compaction"
     assert last.parts[0].provider_raw == response["output"][0]
     assert last.parts[0].blob is not None
-    assert ctx.blob_store.get(last.parts[0].blob) == b"encrypted-payload"
+    assert ctx.blob_store.get_blob(last.parts[0].blob) == b"encrypted-payload"
 
 
 def test_compact_ingest_only_compaction_part_and_usage() -> None:
@@ -1129,7 +1129,7 @@ def test_compact_ingest_only_compaction_part_and_usage() -> None:
     assert len(last.parts) == 1
     assert last.parts[0].type == "compaction"
     assert last.parts[0].blob is not None
-    assert ctx2.blob_store.get(last.parts[0].blob) == b"encrypted-payload"
+    assert ctx2.blob_store.get_blob(last.parts[0].blob) == b"encrypted-payload"
 
     # Compact ingestion should not overwrite the existing conversation cursor.
     assert ctx2.cursor.last_response_id == "resp_old"

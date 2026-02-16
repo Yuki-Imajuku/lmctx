@@ -149,7 +149,7 @@ def test_plan_multimodal_image() -> None:
     store = InMemoryBlobStore()
     ctx = Context(blob_store=store)
 
-    ref = store.put(b"fake-png-bytes", media_type="image/png", kind="image")
+    ref = store.put_blob(b"fake-png-bytes", media_type="image/png", kind="image")
     ctx = ctx.user(
         [
             Part(type="text", text="What's in this image?"),
@@ -197,7 +197,7 @@ def test_plan_with_file_blob_part_uses_default_filename() -> None:
     store = InMemoryBlobStore()
     ctx = Context(blob_store=store)
 
-    ref = store.put(b"fake-document-bytes", media_type="application/pdf", kind="document")
+    ref = store.put_blob(b"fake-document-bytes", media_type="application/pdf", kind="document")
     ctx = ctx.user([Part(type="file", blob=ref)])
 
     plan = adapter.plan(ctx, _spec())

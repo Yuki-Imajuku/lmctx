@@ -18,6 +18,7 @@ uv run python examples/quickstart.py
 | [`examples/multimodal.py`](../examples/multimodal.py) | Text + image parts with blob references |
 | [`examples/blob_stores.py`](../examples/blob_stores.py) | `InMemoryBlobStore`, `FileBlobStore`, `put_file()` |
 | [`examples/tool_calling.py`](../examples/tool_calling.py) | Tool call / tool result patterns |
+| [`examples/planning_and_serde.py`](../examples/planning_and_serde.py) | Capability API, strict `RequestPlan` validation, `Context/RunSpec/RequestPlan` ser/de |
 
 ### Provider examples
 
@@ -76,6 +77,7 @@ uv run python examples/quickstart.py
 uv run python examples/multimodal.py
 uv run python examples/blob_stores.py
 uv run python examples/tool_calling.py
+uv run python examples/planning_and_serde.py
 
 # openai
 uv run python examples/api_openai_responses.py

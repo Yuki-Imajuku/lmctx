@@ -261,7 +261,7 @@ def test_plan_multimodal_image() -> None:
     store = InMemoryBlobStore()
     ctx = Context(blob_store=store)
 
-    ref = store.put(b"fake-png-bytes", media_type="image/png", kind="image")
+    ref = store.put_blob(b"fake-png-bytes", media_type="image/png", kind="image")
     ctx = ctx.user(
         [
             Part(type="text", text="Describe this image."),
@@ -302,7 +302,7 @@ def test_plan_with_file_blob_part() -> None:
     store = InMemoryBlobStore()
     ctx = Context(blob_store=store)
 
-    ref = store.put(b"%PDF-1.4 fake content", media_type="application/pdf", kind="document")
+    ref = store.put_blob(b"%PDF-1.4 fake content", media_type="application/pdf", kind="document")
     ctx = ctx.user([Part(type="file", blob=ref)])
 
     plan = adapter.plan(ctx, _spec())
@@ -575,7 +575,7 @@ def test_ingest_compaction_response() -> None:
     assert last is not None
     assert last.parts[0].type == "compaction"
     assert last.parts[0].blob is not None
-    assert ctx2.blob_store.get(last.parts[0].blob) == b"opaque-compaction-payload"
+    assert ctx2.blob_store.get_blob(last.parts[0].blob) == b"opaque-compaction-payload"
 
 
 def test_plan_compaction_roundtrip_from_blob() -> None:
