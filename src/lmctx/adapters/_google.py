@@ -174,7 +174,7 @@ def _file_part_to_google(part: Part, store: BlobStore) -> dict[str, object] | No
             }
 
     if part.blob:
-        data = store.get(part.blob)
+        data = store.get_blob(part.blob)
         b64 = base64.b64encode(data).decode("ascii")
         return {
             "inline_data": {
@@ -261,7 +261,7 @@ def _part_to_google(
     if part.type == "text" and part.text:
         return {"text": part.text}
     if part.type == "image" and part.blob:
-        data = store.get(part.blob)
+        data = store.get_blob(part.blob)
         b64 = base64.b64encode(data).decode("ascii")
         return {
             "inline_data": {
@@ -416,7 +416,7 @@ def _part_from_google_response(ctx: Context, raw_part: object) -> Part | None:
         data = _decode_inline_data_bytes(encoded)
         if data is not None:
             part_type, blob_kind = _inline_data_part_kind(mime_type if isinstance(mime_type, str) else None)
-            blob = ctx.blob_store.put(
+            blob = ctx.blob_store.put_blob(
                 data,
                 media_type=mime_type if isinstance(mime_type, str) and mime_type else "application/octet-stream",
                 kind=blob_kind,

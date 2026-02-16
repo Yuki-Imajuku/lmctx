@@ -41,7 +41,7 @@ if TYPE_CHECKING:
 
 def _blob_to_data_url(store: BlobStore, blob: BlobReference) -> str:
     """Encode blob as a data URL for inline image input."""
-    data = store.get(blob)
+    data = store.get_blob(blob)
     b64 = base64.b64encode(data).decode("ascii")
     media_type = blob.media_type or "application/octet-stream"
     return f"data:{media_type};base64,{b64}"
@@ -102,7 +102,7 @@ def _file_input_from_part(part: Part, store: BlobStore) -> dict[str, object] | N
             return {"type": "input_file", "filename": filename}
 
     if part.blob is not None:
-        data = store.get(part.blob)
+        data = store.get_blob(part.blob)
         encoded = base64.b64encode(data).decode("ascii")
         item = {"type": "input_file", "file_data": encoded}
         filename = None
@@ -157,7 +157,7 @@ def _parse_compaction_item(ctx: Context, item: dict[str, object]) -> Part | None
     encrypted_content = item.get("encrypted_content")
     if not isinstance(encrypted_content, str):
         return None
-    blob = ctx.blob_store.put(
+    blob = ctx.blob_store.put_blob(
         encrypted_content.encode("utf-8"),
         media_type="application/octet-stream",
         kind="compaction",
@@ -186,7 +186,7 @@ def _part_from_image_payload(
     decoded = _decode_base64_payload(payload)
     if decoded is None:
         return None
-    blob = ctx.blob_store.put(decoded, media_type=media_type, kind="image")
+    blob = ctx.blob_store.put_blob(decoded, media_type=media_type, kind="image")
     return Part(type="image", blob=blob, provider_raw=provider_raw)
 
 
@@ -386,7 +386,7 @@ def _assistant_to_responses(msg: Message, store: BlobStore) -> list[dict[str, ob
                     item["id"] = compaction_id
         elif part.blob:
             try:
-                encrypted_content = store.get(part.blob).decode("utf-8")
+                encrypted_content = store.get_blob(part.blob).decode("utf-8")
             except (BlobIntegrityError, BlobNotFoundError, UnicodeDecodeError):
                 encrypted_content = None
             if encrypted_content is not None:
@@ -527,7 +527,7 @@ def _part_exclusion_reason_for_role(part: Part, role: str, store: BlobStore) -> 
                 return None
             if part.blob is not None:
                 try:
-                    store.get(part.blob).decode("utf-8")
+                    store.get_blob(part.blob).decode("utf-8")
                 except BlobNotFoundError:
                     return "assistant compaction blob is missing in blob_store"
                 except BlobIntegrityError:

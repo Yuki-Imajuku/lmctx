@@ -142,7 +142,7 @@ def _image_part_from_item(ctx: Context, item: dict[str, object]) -> Part | None:
         except (binascii.Error, ValueError):
             data = None
         if data is not None:
-            blob = ctx.blob_store.put(data, media_type="image/png", kind="image")
+            blob = ctx.blob_store.put_blob(data, media_type="image/png", kind="image")
             return Part(type="image", blob=blob, provider_raw=item)
 
     image_url = item.get("url")

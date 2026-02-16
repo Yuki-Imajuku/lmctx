@@ -156,7 +156,7 @@ def _parts_to_bedrock(
         elif part.type == "text":
             excluded_parts.append((part_index, "text part is empty"))
         elif part.type == "image" and part.blob:
-            data = store.get(part.blob)
+            data = store.get_blob(part.blob)
             blocks.append(
                 {
                     "image": {
@@ -168,7 +168,7 @@ def _parts_to_bedrock(
         elif part.type == "image":
             excluded_parts.append((part_index, "image part requires blob"))
         elif part.type == "file" and part.blob and role == "user":
-            data = store.get(part.blob)
+            data = store.get_blob(part.blob)
             raw = _as_str_object_dict(part.provider_raw)
             raw_name = raw.get("name") if raw is not None else None
             name = raw_name if isinstance(raw_name, str) and raw_name else "document"

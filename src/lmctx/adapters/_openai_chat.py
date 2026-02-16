@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
 
 def _blob_to_data_url(store: BlobStore, blob: BlobReference) -> str:
-    data = store.get(blob)
+    data = store.get_blob(blob)
     b64 = base64.b64encode(data).decode("ascii")
     media_type = blob.media_type or "application/octet-stream"
     return f"data:{media_type};base64,{b64}"
@@ -63,7 +63,7 @@ def _file_block_to_openai(part: Part, store: BlobStore) -> dict[str, object] | N
                 file_obj[key] = value
 
     if part.blob and "file_id" not in file_obj and "file_data" not in file_obj:
-        data = store.get(part.blob)
+        data = store.get_blob(part.blob)
         file_obj["file_data"] = base64.b64encode(data).decode("ascii")
         if "filename" not in file_obj:
             file_obj["filename"] = "upload.bin"

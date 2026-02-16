@@ -31,4 +31,4 @@ def put_file(store: BlobStore, path: str | Path, *, kind: str | None = None) -> 
     if kind is None:
         kind = _guess_kind(media_type)
     data = path.read_bytes()
-    return store.put(data, media_type=media_type, kind=kind)
+    return store.put_blob(data, media_type=media_type, kind=kind)

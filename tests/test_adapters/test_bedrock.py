@@ -324,7 +324,7 @@ def test_plan_multimodal_image() -> None:
     ctx = Context(blob_store=store)
 
     image_data = b"fake-png-bytes"
-    ref = store.put(image_data, media_type="image/png", kind="image")
+    ref = store.put_blob(image_data, media_type="image/png", kind="image")
     ctx = ctx.user(
         [
             Part(type="text", text="Describe this."),
@@ -345,7 +345,7 @@ def test_plan_multimodal_image_media_type_is_case_insensitive() -> None:
     ctx = Context(blob_store=store)
 
     image_data = b"fake-jpeg-bytes"
-    ref = store.put(image_data, media_type="image/JPEG", kind="image")
+    ref = store.put_blob(image_data, media_type="image/JPEG", kind="image")
     ctx = ctx.user([Part(type="image", blob=ref)])
 
     plan = adapter.plan(ctx, _spec())
@@ -359,7 +359,7 @@ def test_plan_with_file_part() -> None:
     ctx = Context(blob_store=store)
 
     pdf_data = b"%PDF-1.4 fake content"
-    ref = store.put(pdf_data, media_type="application/pdf", kind="document")
+    ref = store.put_blob(pdf_data, media_type="application/pdf", kind="document")
     ctx = ctx.user(
         [
             Part(type="text", text="Summarize this PDF."),

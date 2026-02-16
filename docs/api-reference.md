@@ -129,10 +129,40 @@ class BlobReference:
 ### `BlobStore` protocol
 
 ```python
+@dataclass(frozen=True, slots=True)
+class BlobEntry:
+    ref: BlobReference
+    created_at: datetime
+    last_accessed_at: datetime | None = None
+
+@dataclass(frozen=True, slots=True)
+class PruneReport:
+    deleted: tuple[BlobEntry, ...]
+    bytes_freed: int
+    examined: int
+    remaining: int
+    dry_run: bool
+
 class BlobStore(Protocol):
-    def put(self, data: bytes, *, media_type: str | None = None, kind: str = "file") -> BlobReference: ...
-    def get(self, ref: BlobReference) -> bytes: ...
-    def contains(self, ref: BlobReference) -> bool: ...
+    def put_blob(self, data: bytes, *, media_type: str | None = None, kind: str = "file") -> BlobReference: ...
+    def get_blob(self, ref: BlobReference) -> bytes: ...
+    def has_blob(self, ref: BlobReference) -> bool: ...
+    def delete_blob(self, ref_or_id: BlobReference | str) -> bool: ...
+    def list_blobs(
+        self,
+        *,
+        kind: str | None = None,
+        media_type: str | None = None,
+    ) -> tuple[BlobEntry, ...]: ...
+    def prune_blobs(
+        self,
+        *,
+        older_than: datetime | None = None,
+        max_bytes: int | None = None,
+        kind: str | None = None,
+        media_type: str | None = None,
+        dry_run: bool = False,
+    ) -> PruneReport: ...
 ```
 
 Built-ins:

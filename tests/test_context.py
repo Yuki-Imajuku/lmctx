@@ -173,12 +173,12 @@ def test_blob_store_shared_across_snapshots() -> None:
 def test_append_message_with_blob_part() -> None:
     store = InMemoryBlobStore()
     ctx = Context(blob_store=store)
-    ref = store.put(b"image data", media_type="image/png", kind="image")
+    ref = store.put_blob(b"image data", media_type="image/png", kind="image")
     msg = Message(role="user", parts=(Part(type="image", blob=ref),))
     ctx = ctx.append(msg)
     blob = ctx.messages[0].parts[0].blob
     assert blob is not None
-    retrieved = store.get(blob)
+    retrieved = store.get_blob(blob)
     assert retrieved == b"image data"
 
 
@@ -332,7 +332,7 @@ def test_nested_payload_is_immutable_across_snapshots() -> None:
 
 def test_context_to_from_dict_round_trip_with_explicit_blob_store() -> None:
     store = InMemoryBlobStore()
-    blob_ref = store.put(b"image-data", media_type="image/png", kind="image")
+    blob_ref = store.put_blob(b"image-data", media_type="image/png", kind="image")
 
     message = Message(
         role="assistant",
@@ -361,7 +361,7 @@ def test_context_to_from_dict_round_trip_with_explicit_blob_store() -> None:
 
 def test_context_to_from_dict_round_trip_with_blob_payloads() -> None:
     store = InMemoryBlobStore()
-    blob_ref = store.put(b"binary-data", media_type="application/octet-stream", kind="file")
+    blob_ref = store.put_blob(b"binary-data", media_type="application/octet-stream", kind="file")
     original = Context(blob_store=store).append(Message(role="user", parts=(Part(type="file", blob=blob_ref),)))
 
     serialized = original.to_dict(include_blob_payloads=True)
@@ -370,7 +370,7 @@ def test_context_to_from_dict_round_trip_with_blob_payloads() -> None:
     restored = Context.from_dict(serialized)
     restored_ref = restored.messages[0].parts[0].blob
     assert restored_ref is not None
-    assert restored.blob_store.get(restored_ref) == b"binary-data"
+    assert restored.blob_store.get_blob(restored_ref) == b"binary-data"
 
 
 def test_context_to_dict_raises_when_blob_payload_missing_from_store() -> None:
@@ -520,7 +520,7 @@ def test_context_to_dict_serializes_all_part_optional_fields() -> None:
 
 def test_context_to_dict_deduplicates_blob_payloads_by_id() -> None:
     store = InMemoryBlobStore()
-    blob_ref = store.put(b"same")
+    blob_ref = store.put_blob(b"same")
     ctx = Context(blob_store=store).append(
         Message(role="user", parts=(Part(type="file", blob=blob_ref), Part(type="file", blob=blob_ref)))
     )
@@ -596,8 +596,8 @@ def test_serialized_blob_store_methods_and_integrity_checks() -> None:
     ctx = Context.from_dict(payload)
     store = ctx.blob_store
 
-    new_ref = store.put(b"xyz")
-    assert store.contains(new_ref) is True
+    new_ref = store.put_blob(b"xyz")
+    assert store.has_blob(new_ref) is True
 
     missing_ref = BlobReference(
         id="missing",
@@ -607,7 +607,7 @@ def test_serialized_blob_store_methods_and_integrity_checks() -> None:
         size=1,
     )
     with pytest.raises(BlobNotFoundError):
-        store.get(missing_ref)
+        store.get_blob(missing_ref)
 
     ref = BlobReference(
         id="blob-1",
@@ -618,4 +618,4 @@ def test_serialized_blob_store_methods_and_integrity_checks() -> None:
     )
     store._blobs["blob-1"] = b"tampered"  # type: ignore[attr-defined]
     with pytest.raises(BlobIntegrityError):
-        store.get(ref)
+        store.get_blob(ref)

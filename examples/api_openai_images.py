@@ -49,7 +49,7 @@ if not image_parts:
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 blob = image_parts[0].blob
 assert blob is not None
-image_bytes = ctx.blob_store.get(blob)
+image_bytes = ctx.blob_store.get_blob(blob)
 out_path = OUTPUT_DIR / "openai-generated.png"
 out_path.write_bytes(image_bytes)
 
