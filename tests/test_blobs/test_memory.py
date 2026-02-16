@@ -1,7 +1,7 @@
 """Tests for InMemoryBlobStore."""
 
 import hashlib
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 
 import pytest
 
@@ -116,6 +116,15 @@ def test_prune_max_bytes_removes_oldest_entries() -> None:
     first = store.put_blob(b"1" * 4, kind="file")
     second = store.put_blob(b"2" * 4, kind="file")
     third = store.put_blob(b"3" * 2, kind="file")
+    base = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    ordered_refs = (first, second, third)
+    for index, ref in enumerate(ordered_refs):
+        original = store._entries[ref.id]
+        store._entries[ref.id] = original.__class__(
+            ref=original.ref,
+            created_at=base + timedelta(seconds=index),
+            last_accessed_at=original.last_accessed_at,
+        )
 
     report = store.prune_blobs(max_bytes=5)
 
