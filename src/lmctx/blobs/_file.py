@@ -3,7 +3,8 @@
 import hashlib
 import json
 import uuid
-from datetime import datetime
+from contextlib import suppress
+from datetime import datetime, timezone
 from pathlib import Path
 
 from lmctx.blobs._reference import BlobReference
@@ -82,9 +83,12 @@ class FileBlobStore:
         if not isinstance(value, str):
             return None
         try:
-            return datetime.fromisoformat(value)
+            parsed = datetime.fromisoformat(value)
         except ValueError:
             return None
+        if parsed.tzinfo is None:
+            return parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
 
     def _entry_from_payload(self, payload: object, *, blob_id: str) -> BlobEntry | None:
         """Deserialize one metadata sidecar payload."""
@@ -224,13 +228,18 @@ class FileBlobStore:
         payload_deleted = False
 
         payload_path = self._payload_path(blob_id)
-        if payload_path is not None and payload_path.exists():
-            payload_path.unlink()
-            payload_deleted = True
+        if payload_path is not None:
+            try:
+                payload_path.unlink()
+            except FileNotFoundError:
+                pass
+            else:
+                payload_deleted = True
 
         meta_path = self._meta_path(blob_id)
-        if meta_path is not None and meta_path.exists():
-            meta_path.unlink()
+        if meta_path is not None:
+            with suppress(FileNotFoundError):
+                meta_path.unlink()
 
         self._entries.pop(blob_id, None)
         return payload_deleted

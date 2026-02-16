@@ -165,7 +165,7 @@ class BlobStore(Protocol):
     ) -> PruneReport: ...
 ```
 
-`prune_blobs(older_than=None, max_bytes=None)` is a no-op and returns an empty `PruneReport`.
+`prune_blobs(older_than=None, max_bytes=None)` is a no-op in terms of deletions: it returns a `PruneReport` with `deleted=()` and `bytes_freed=0`, while `examined`, `remaining`, and `dry_run` still reflect the filtered inventory and call parameters.
 
 Built-ins:
 

@@ -1,6 +1,7 @@
 """Tests for FileBlobStore."""
 
 import hashlib
+import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -147,6 +148,23 @@ def test_delete_meta_only_returns_false_and_cleans_metadata(tmp_path: Path) -> N
     assert meta_path.exists() is False
 
 
+def test_delete_blob_ignores_file_not_found_race(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    store = FileBlobStore(tmp_path / "blobs")
+    ref = store.put_blob(b"hello")
+    payload_path = store.root / f"{ref.id}.blob"
+    meta_path = store.root / f"{ref.id}.meta.json"
+    target_paths = {payload_path, meta_path}
+    original_unlink = Path.unlink
+
+    def flaky_unlink(path: Path, **kwargs: object) -> None:
+        if path in target_paths:
+            raise FileNotFoundError
+        original_unlink(path, missing_ok=bool(kwargs.get("missing_ok", False)))
+
+    monkeypatch.setattr(Path, "unlink", flaky_unlink)
+    assert store.delete_blob(ref.id) is False
+
+
 def test_list_returns_entries_sorted_and_filterable(tmp_path: Path) -> None:
     store = FileBlobStore(tmp_path / "blobs")
     text_ref = store.put_blob(b"text", media_type="text/plain", kind="file")
@@ -258,3 +276,22 @@ def test_list_restores_entries_from_sidecar_metadata(tmp_path: Path) -> None:
     assert len(entries) == 1
     assert entries[0].ref.id == ref.id
     assert entries[0].ref.sha256 == ref.sha256
+
+
+def test_list_normalizes_naive_sidecar_timestamps_to_utc(tmp_path: Path) -> None:
+    root = tmp_path / "blobs"
+    store = FileBlobStore(root)
+    ref = store.put_blob(b"persisted", media_type="text/plain", kind="file")
+    meta_path = root / f"{ref.id}.meta.json"
+    payload = json.loads(meta_path.read_text(encoding="utf-8"))
+    assert isinstance(payload, dict)
+    created_raw = payload.get("created_at")
+    assert isinstance(created_raw, str)
+    payload["created_at"] = created_raw.replace("+00:00", "")
+    meta_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    reopened = FileBlobStore(root)
+    entry = next(item for item in reopened.list_blobs() if item.ref.id == ref.id)
+    assert entry.created_at.tzinfo == timezone.utc
+    report = reopened.prune_blobs(older_than=datetime.now(timezone.utc) + timedelta(days=1), dry_run=True)
+    assert report.examined == 1
