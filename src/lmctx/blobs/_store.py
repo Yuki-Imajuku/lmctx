@@ -75,6 +75,7 @@ def select_prune_candidates(
 
     Selection order is oldest first (`created_at`, then `ref.id`) to keep
     behavior deterministic and stable across stores.
+    When both `older_than` and `max_bytes` are `None`, no entries are selected.
     """
     if max_bytes is not None and max_bytes < 0:
         msg = "max_bytes must be >= 0."
@@ -155,5 +156,6 @@ class BlobStore(Protocol):
         - `max_bytes`: keep filtered total bytes at or below this threshold
         - `kind` / `media_type`: apply pruning only to matching entries
         - `dry_run`: compute and report deletions without removing blobs
+        - when both `older_than` and `max_bytes` are `None`, this is a no-op
         """
         ...

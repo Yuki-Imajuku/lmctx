@@ -2,6 +2,7 @@
 
 import hashlib
 import uuid
+from collections.abc import Mapping
 from datetime import datetime
 
 from lmctx.blobs._reference import BlobReference
@@ -23,6 +24,22 @@ class InMemoryBlobStore:
         """Initialize an empty in-memory store."""
         self._blobs: dict[str, bytes] = {}
         self._entries: dict[str, BlobEntry] = {}
+
+    @classmethod
+    def from_preloaded(
+        cls,
+        entries_by_id: Mapping[str, tuple[BlobReference, bytes]],
+    ) -> "InMemoryBlobStore":
+        """Build a store from preloaded ``(BlobReference, bytes)`` data."""
+        store = cls()
+        for ref, data in entries_by_id.values():
+            store._blobs[ref.id] = data
+            store._entries[ref.id] = BlobEntry(
+                ref=ref,
+                created_at=utc_now(),
+                last_accessed_at=None,
+            )
+        return store
 
     def put_blob(
         self,

@@ -595,6 +595,7 @@ def test_serialized_blob_store_methods_and_integrity_checks() -> None:
     }
     ctx = Context.from_dict(payload)
     store = ctx.blob_store
+    assert isinstance(store, InMemoryBlobStore)
 
     new_ref = store.put_blob(b"xyz")
     assert store.has_blob(new_ref) is True
@@ -616,6 +617,6 @@ def test_serialized_blob_store_methods_and_integrity_checks() -> None:
         kind="file",
         size=3,
     )
-    store._blobs["blob-1"] = b"tampered"  # type: ignore[attr-defined]
+    store._blobs["blob-1"] = b"tampered"
     with pytest.raises(BlobIntegrityError):
         store.get_blob(ref)

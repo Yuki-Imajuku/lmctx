@@ -5,8 +5,24 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
+import lmctx.blobs._memory as memory_module
 from lmctx.blobs import BlobReference, BlobStore, InMemoryBlobStore
 from lmctx.errors import BlobIntegrityError, BlobNotFoundError
+
+
+def _set_created_at(
+    store: InMemoryBlobStore,
+    refs: tuple[BlobReference, ...],
+    *,
+    base: datetime,
+) -> None:
+    for index, ref in enumerate(refs):
+        original = store._entries[ref.id]
+        store._entries[ref.id] = original.__class__(
+            ref=original.ref,
+            created_at=base + timedelta(seconds=index),
+            last_accessed_at=original.last_accessed_at,
+        )
 
 
 def test_put_and_get() -> None:
@@ -98,6 +114,7 @@ def test_list_returns_entries_sorted_and_filterable() -> None:
     store = InMemoryBlobStore()
     text_ref = store.put_blob(b"text", media_type="text/plain", kind="file")
     image_ref = store.put_blob(b"img", media_type="image/png", kind="image")
+    _set_created_at(store, (text_ref, image_ref), base=datetime(2026, 1, 1, tzinfo=timezone.utc))
 
     entries = store.list_blobs()
     assert [entry.ref.id for entry in entries] == [text_ref.id, image_ref.id]
@@ -116,15 +133,7 @@ def test_prune_max_bytes_removes_oldest_entries() -> None:
     first = store.put_blob(b"1" * 4, kind="file")
     second = store.put_blob(b"2" * 4, kind="file")
     third = store.put_blob(b"3" * 2, kind="file")
-    base = datetime(2026, 1, 1, tzinfo=timezone.utc)
-    ordered_refs = (first, second, third)
-    for index, ref in enumerate(ordered_refs):
-        original = store._entries[ref.id]
-        store._entries[ref.id] = original.__class__(
-            ref=original.ref,
-            created_at=base + timedelta(seconds=index),
-            last_accessed_at=original.last_accessed_at,
-        )
+    _set_created_at(store, (first, second, third), base=datetime(2026, 1, 1, tzinfo=timezone.utc))
 
     report = store.prune_blobs(max_bytes=5)
 
@@ -164,3 +173,52 @@ def test_prune_rejects_negative_max_bytes() -> None:
     store.put_blob(b"data")
     with pytest.raises(ValueError, match="max_bytes must be >= 0"):
         store.prune_blobs(max_bytes=-1)
+
+
+def test_prune_without_filters_is_noop() -> None:
+    store = InMemoryBlobStore()
+    ref = store.put_blob(b"data")
+
+    report = store.prune_blobs()
+
+    assert report.deleted == ()
+    assert report.bytes_freed == 0
+    assert report.examined == 1
+    assert report.remaining == 1
+    assert report.dry_run is False
+    assert store.has_blob(ref) is True
+
+
+def test_utc_now_can_be_monkeypatched_for_timestamps(monkeypatch: pytest.MonkeyPatch) -> None:
+    created_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    accessed_at = created_at + timedelta(minutes=1)
+    ticks = iter((created_at, accessed_at))
+    monkeypatch.setattr(memory_module, "utc_now", lambda: next(ticks))
+    store = InMemoryBlobStore()
+
+    ref = store.put_blob(b"data")
+    entry = store.list_blobs()[0]
+    assert entry.created_at == created_at
+    assert entry.last_accessed_at is None
+
+    assert store.get_blob(ref) == b"data"
+    touched = store.list_blobs()[0]
+    assert touched.last_accessed_at == accessed_at
+
+
+def test_from_preloaded_hydrates_entries(monkeypatch: pytest.MonkeyPatch) -> None:
+    created_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    ref = BlobReference(
+        id="blob-1",
+        sha256=hashlib.sha256(b"abc").hexdigest(),
+        media_type="application/octet-stream",
+        kind="file",
+        size=3,
+    )
+    monkeypatch.setattr(memory_module, "utc_now", lambda: created_at)
+    store = InMemoryBlobStore.from_preloaded({"ignored-key": (ref, b"abc")})
+
+    assert store.get_blob(ref) == b"abc"
+    entry = store.list_blobs()[0]
+    assert entry.ref.id == ref.id
+    assert entry.created_at == created_at

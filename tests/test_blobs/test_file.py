@@ -6,8 +6,26 @@ from pathlib import Path
 
 import pytest
 
+import lmctx.blobs._file as file_module
 from lmctx.blobs import BlobReference, BlobStore, FileBlobStore
 from lmctx.errors import BlobIntegrityError, BlobNotFoundError
+
+
+def _set_created_at(
+    store: FileBlobStore,
+    refs: tuple[BlobReference, ...],
+    *,
+    base: datetime,
+) -> None:
+    for index, ref in enumerate(refs):
+        original = store._entries[ref.id]
+        updated = original.__class__(
+            ref=original.ref,
+            created_at=base + timedelta(seconds=index),
+            last_accessed_at=original.last_accessed_at,
+        )
+        store._entries[ref.id] = updated
+        store._write_entry(updated)
 
 
 def test_put_and_get(tmp_path: Path) -> None:
@@ -121,6 +139,7 @@ def test_list_returns_entries_sorted_and_filterable(tmp_path: Path) -> None:
     store = FileBlobStore(tmp_path / "blobs")
     text_ref = store.put_blob(b"text", media_type="text/plain", kind="file")
     image_ref = store.put_blob(b"img", media_type="image/png", kind="image")
+    _set_created_at(store, (text_ref, image_ref), base=datetime(2026, 1, 1, tzinfo=timezone.utc))
 
     entries = store.list_blobs()
     assert [entry.ref.id for entry in entries] == [text_ref.id, image_ref.id]
@@ -139,16 +158,7 @@ def test_prune_max_bytes_removes_oldest_entries(tmp_path: Path) -> None:
     first = store.put_blob(b"1" * 4, kind="file")
     second = store.put_blob(b"2" * 4, kind="file")
     third = store.put_blob(b"3" * 2, kind="file")
-    base = datetime(2026, 1, 1, tzinfo=timezone.utc)
-    ordered_refs = (first, second, third)
-    for index, ref in enumerate(ordered_refs):
-        original = store._entries[ref.id]
-        store._entries[ref.id] = original.__class__(
-            ref=original.ref,
-            created_at=base + timedelta(seconds=index),
-            last_accessed_at=original.last_accessed_at,
-        )
-        store._write_entry(store._entries[ref.id])
+    _set_created_at(store, (first, second, third), base=datetime(2026, 1, 1, tzinfo=timezone.utc))
 
     report = store.prune_blobs(max_bytes=5)
 
@@ -189,6 +199,40 @@ def test_prune_rejects_negative_max_bytes(tmp_path: Path) -> None:
     store.put_blob(b"data")
     with pytest.raises(ValueError, match="max_bytes must be >= 0"):
         store.prune_blobs(max_bytes=-1)
+
+
+def test_prune_without_filters_is_noop(tmp_path: Path) -> None:
+    store = FileBlobStore(tmp_path / "blobs")
+    ref = store.put_blob(b"data")
+
+    report = store.prune_blobs()
+
+    assert report.deleted == ()
+    assert report.bytes_freed == 0
+    assert report.examined == 1
+    assert report.remaining == 1
+    assert report.dry_run is False
+    assert store.has_blob(ref) is True
+
+
+def test_utc_now_can_be_monkeypatched_for_timestamps(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    created_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    accessed_at = created_at + timedelta(minutes=1)
+    ticks = iter((created_at, accessed_at))
+    monkeypatch.setattr(file_module, "utc_now", lambda: next(ticks))
+    store = FileBlobStore(tmp_path / "blobs")
+
+    ref = store.put_blob(b"data")
+    entry = next(item for item in store.list_blobs() if item.ref.id == ref.id)
+    assert entry.created_at == created_at
+    assert entry.last_accessed_at is None
+
+    assert store.get_blob(ref) == b"data"
+    touched = next(item for item in store.list_blobs() if item.ref.id == ref.id)
+    assert touched.last_accessed_at == accessed_at
 
 
 def test_list_restores_entries_from_sidecar_metadata(tmp_path: Path) -> None:

@@ -165,6 +165,8 @@ class BlobStore(Protocol):
     ) -> PruneReport: ...
 ```
 
+`prune_blobs(older_than=None, max_bytes=None)` is a no-op and returns an empty `PruneReport`.
+
 Built-ins:
 
 - `InMemoryBlobStore()`

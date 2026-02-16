@@ -69,13 +69,15 @@ class FileBlobStore:
             "last_accessed_at": entry.last_accessed_at.isoformat() if entry.last_accessed_at is not None else None,
         }
 
-    def _as_str_object_dict(self, payload: object) -> dict[str, object] | None:
+    @staticmethod
+    def _as_str_object_dict(payload: object) -> dict[str, object] | None:
         """Convert dict-like payload into ``dict[str, object]``."""
         if not isinstance(payload, dict):
             return None
         return {str(key): value for key, value in payload.items()}
 
-    def _parse_iso_timestamp(self, value: object) -> datetime | None:
+    @staticmethod
+    def _parse_iso_timestamp(value: object) -> datetime | None:
         """Parse one ISO-8601 timestamp string."""
         if not isinstance(value, str):
             return None
