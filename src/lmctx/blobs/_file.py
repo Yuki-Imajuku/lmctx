@@ -221,20 +221,19 @@ class FileBlobStore:
     def delete_blob(self, ref_or_id: BlobReference | str) -> bool:
         """Delete a blob payload and metadata sidecar by ref or ID."""
         blob_id = normalize_blob_id(ref_or_id)
-        deleted = False
+        payload_deleted = False
 
         payload_path = self._payload_path(blob_id)
         if payload_path is not None and payload_path.exists():
             payload_path.unlink()
-            deleted = True
+            payload_deleted = True
 
         meta_path = self._meta_path(blob_id)
         if meta_path is not None and meta_path.exists():
             meta_path.unlink()
-            deleted = True
 
         self._entries.pop(blob_id, None)
-        return deleted
+        return payload_deleted
 
     def list_blobs(
         self,

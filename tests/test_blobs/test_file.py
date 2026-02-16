@@ -135,6 +135,18 @@ def test_delete_missing_blob_returns_false(tmp_path: Path) -> None:
     assert store.delete_blob("missing") is False
 
 
+def test_delete_meta_only_returns_false_and_cleans_metadata(tmp_path: Path) -> None:
+    store = FileBlobStore(tmp_path / "blobs")
+    ref = store.put_blob(b"hello")
+    payload_path = store.root / f"{ref.id}.blob"
+    meta_path = store.root / f"{ref.id}.meta.json"
+    payload_path.unlink()
+    assert meta_path.exists() is True
+
+    assert store.delete_blob(ref.id) is False
+    assert meta_path.exists() is False
+
+
 def test_list_returns_entries_sorted_and_filterable(tmp_path: Path) -> None:
     store = FileBlobStore(tmp_path / "blobs")
     text_ref = store.put_blob(b"text", media_type="text/plain", kind="file")

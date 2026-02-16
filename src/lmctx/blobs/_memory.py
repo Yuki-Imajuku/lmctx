@@ -1,9 +1,10 @@
 """InMemoryBlobStore: dict-based blob storage for development and testing."""
 
+from __future__ import annotations
+
 import hashlib
 import uuid
-from collections.abc import Mapping
-from datetime import datetime
+from typing import TYPE_CHECKING
 
 from lmctx.blobs._reference import BlobReference
 from lmctx.blobs._store import (
@@ -15,6 +16,10 @@ from lmctx.blobs._store import (
     utc_now,
 )
 from lmctx.errors import BlobIntegrityError, BlobNotFoundError
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
+    from datetime import datetime
 
 
 class InMemoryBlobStore:
@@ -29,7 +34,7 @@ class InMemoryBlobStore:
     def from_preloaded(
         cls,
         entries_by_id: Mapping[str, tuple[BlobReference, bytes]],
-    ) -> "InMemoryBlobStore":
+    ) -> InMemoryBlobStore:
         """Build a store from preloaded ``(BlobReference, bytes)`` data."""
         store = cls()
         for ref, data in entries_by_id.values():
